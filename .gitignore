@@ -1,1 +1,3 @@
 venv
+data/features.txt
+__pycache__/
