@@ -2,9 +2,16 @@ import pandas as pd
 import numpy as np
 import glob
 
+BET_COLUMNS = ["B365W", "B365L", "PSW", "PSL", "MaxW", "MaxL", "AvgW", "AvgL"]
+RANK_COLUMNS = ["WRank", "LRank"]
+POINT_COLUMNS = ["WPts", "LPts"]
+GAME_COLUMNS = ["W1", "L1", "W2", "L2", "W3", "L3", "W4", "L4", "W5", "L5"]
+
+
 def load_2025_data() -> pd.DataFrame:
     data : pd.DataFrame = pd.read_excel('../data/2025.xlsx')
     return data
+
 
 def load_data() -> pd.DataFrame:
     files = glob.glob('../data/*.xlsx')
@@ -18,44 +25,23 @@ def load_data() -> pd.DataFrame:
     df = pd.concat(dfs, ignore_index=True)
     return df
 
-def clean_data(df : pd.DataFrame) -> pd.DataFrame:
 
-    df.drop(columns=["BFEW", "BFEL"], inplace=True, errors="ignore")
-    df = df[df["Comment"] != "Walkover"]
-    
-    bets = [
-        "B365W",
-        "B365L",
-        "PSW",
-        "PSL",
-        "MaxW",
-        "MaxL",
-        "AvgW",
-        "AvgL"
-    ]
+def fill_missing_values(df : pd.DataFrame) -> pd.DataFrame:
+    """Fill missing values using defaults."""
 
-    df[bets] = df[bets].fillna(0.5)
+    df[BET_COLUMNS] = df[BET_COLUMNS].fillna(0.5)
 
     max_rank = max(df["WRank"].max(), df["LRank"].max())
-    df[["WRank", "LRank"]] = df[["WRank", "LRank"]].fillna(max_rank + 100)
+    df[RANK_COLUMNS] = df[RANK_COLUMNS].fillna(max_rank + 100)
 
-    games = [
-        "W1",
-        "L1",
-        "W2",
-        "L2",
-        "W3",
-        "L3",
-        "W4",
-        "L4",
-        "W5",
-        "L5"
-    ]
-    df[games] = df[games].fillna(0)
+    min_points = min(df["WPts"].min(), df["LPts"].min())
+    df[POINT_COLUMNS] = df[POINT_COLUMNS].fillna(min_points - 100)
 
-    mask = df["Best of"].isna()
+    df[GAME_COLUMNS] = df[GAME_COLUMNS].fillna(0)
 
-    condizione = (
+    missing_best_of = df["Best of"].isna()
+
+    best_of_5 = (
         (df["W4"] != 0) | (df["W5"] != 0) |
         (
             (df["W1"] > df["L1"]) &
@@ -64,8 +50,8 @@ def clean_data(df : pd.DataFrame) -> pd.DataFrame:
         )
     )
 
-    df.loc[mask, "Best of"] = np.where(
-        condizione.loc[mask],
+    df.loc[missing_best_of , "Best of"] = np.where(
+        best_of_5.loc[missing_best_of],
         5,
         3
     )
@@ -73,6 +59,29 @@ def clean_data(df : pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-raw_data = load_data()
-raw_data = clean_data(raw_data)
-raw_data.info()
+def remove_data(df : pd.DataFrame) -> pd.DataFrame:
+    """Remove unused columns and invalid matches."""
+
+    df.drop(columns=["BFEW", "BFEL"], inplace=True, errors="ignore")
+    df = df[df["Comment"] != "Walkover"]
+
+    return df
+
+
+def align_types(df : pd.DataFrame) -> pd.DataFrame:
+    """Convert columns type."""
+
+    int_columns = ["Best of", *RANK_COLUMNS, *GAME_COLUMNS]
+    df[int_columns] = df[int_columns].astype(int)
+
+    return df
+
+
+def clean_data(df : pd.DataFrame) -> pd.DataFrame:
+    """Run the full cleaning pipeline."""
+
+    df = remove_data(df)
+    df = fill_missing_values(df)
+    df = align_types(df)    
+
+    return df
