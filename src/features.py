@@ -20,6 +20,7 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
         win_rate_diff = winner_player.get_win_rate() - loser_player.get_win_rate()
         fatigue_diff = winner_player.get_fatigue(row["Date"]) - loser_player.get_fatigue(row["Date"])
         last_k_matches_win_rate_diff = winner_player.get_last_k_matches_win_rate() - loser_player.get_last_k_matches_win_rate()
+        court_win_rate_diff, surface_win_rate_diff = winner_player.get_court_surface_performance(row["Court"], row["Surface"])
 
         match_builder = MatchBuilder()
 
@@ -36,6 +37,8 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
                 .add_avg_bet_diff(row["AvgW"] - row["AvgL"])
                 .add_fatigue_diff(fatigue_diff)
                 .add_last_k_matches_win_rate_diff(last_k_matches_win_rate_diff)
+                .add_court_win_rate_diff(court_win_rate_diff)
+                .add_surface_win_rate_diff(surface_win_rate_diff)
                 .add_winner(0)
                 .build()
             )
@@ -53,6 +56,8 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
                 .add_avg_bet_diff(row["AvgL"] - row["AvgW"])
                 .add_fatigue_diff(-1 * fatigue_diff)
                 .add_last_k_matches_win_rate_diff(-1 * last_k_matches_win_rate_diff)
+                .add_court_win_rate_diff(-1 * court_win_rate_diff)
+                .add_surface_win_rate_diff(-1 * surface_win_rate_diff)
                 .add_winner(1)
                 .build()
             )
@@ -60,12 +65,16 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
         winner_player.game_update(
             win = True,
             rival = loser_player_name,
-            match_date = row["Date"]
+            match_date = row["Date"],
+            court = row["Court"],
+            surface = row["Surface"]
         )
         loser_player.game_update(
             win = False,
             rival = winner_player_name,
-            match_date = row["Date"]
+            match_date = row["Date"],
+            court = row["Court"],
+            surface = row["Surface"]
         )
     
     return pd.DataFrame(matches)

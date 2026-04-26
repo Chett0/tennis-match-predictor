@@ -10,12 +10,22 @@ class Player:
         self.num_games : int = 0
         self.num_wins : int = 0
         self.last_k_matches : deque[int] = deque(maxlen=k)
+        self.court_performance : dict[str, dict[str, int]] = defaultdict(lambda : {
+            "games" : 0, 
+            "wins" : 0
+        })
+        self.surface_performance : dict[str, dict[str, int]] = defaultdict(lambda : {
+            "games" : 0, 
+            "wins" : 0
+        })
 
     def game_update(
             self,
             win : bool,
             rival : str,
-            match_date : datetime
+            match_date : datetime,
+            court : str,
+            surface : str
         ):
         self.last_match = match_date
         self.num_games += 1
@@ -24,6 +34,12 @@ class Player:
         if win:
             self.num_wins += 1
             self.wins[rival] += 1 
+
+        self.court_performance[court]["games"] += 1
+        self.surface_performance[surface]["games"] += 1
+        if win:
+            self.court_performance[court]["wins"] += 1
+            self.surface_performance[surface]["wins"] += 1
 
 
 
@@ -44,7 +60,19 @@ class Player:
         if not self.last_k_matches:
             return 0.5
         return sum(self.last_k_matches) / len(self.last_k_matches)
+    
+    def get_court_surface_performance(
+            self, 
+            court : str,
+            surface : str
+        ) -> tuple[float, float]:
+        court_performance : dict[str, int] = self.court_performance[court]
+        surface_performance : dict[str, int] = self.surface_performance[surface]
 
+        court_win_rate = court_performance["wins"] / court_performance["games"] if court_performance["games"] > 0 else 0.5
+        surface_win_rate = surface_performance["wins"] / surface_performance["games"] if surface_performance["games"] > 0 else 0.5
+
+        return court_win_rate, surface_win_rate
 
 
 @dataclass
@@ -58,6 +86,8 @@ class Match:
     avg_bet_diff : float
     fatigue_diff : float
     last_k_matches_win_rate_diff : float
+    court_win_rate_diff : float
+    surface_win_rate_diff : float
     winner : int
 
 
@@ -102,6 +132,14 @@ class MatchBuilder:
     def add_last_k_matches_win_rate_diff(self, last_k_matches_win_rate_diff : float):
         self.last_k_matches_win_rate_diff : float = last_k_matches_win_rate_diff
         return self
+    
+    def add_court_win_rate_diff(self, court_win_rate_diff : float):
+        self.court_win_rate_diff : float = court_win_rate_diff
+        return self
+    
+    def add_surface_win_rate_diff(self, surface_win_rate_diff : float):
+        self.surface_win_rate_diff : float = surface_win_rate_diff
+        return self
 
     def build(self):
         return Match(
@@ -114,5 +152,7 @@ class MatchBuilder:
             avg_bet_diff = self.avg_bet_diff,
             fatigue_diff = self.fatigue_diff,
             last_k_matches_win_rate_diff = self.last_k_matches_win_rate_diff,
+            court_win_rate_diff = self.court_win_rate_diff,
+            surface_win_rate_diff = self.surface_win_rate_diff,
             winner = self.winner
         )
