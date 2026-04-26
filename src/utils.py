@@ -1,14 +1,15 @@
 from dataclasses import dataclass
-from collections import defaultdict
+from collections import defaultdict, deque
 from datetime import datetime
 
 class Player:
 
-    def __init__(self):
+    def __init__(self, k = 5):
         self.last_match = None
         self.wins : dict[str, int] = defaultdict(int)
         self.num_games : int = 0
         self.num_wins : int = 0
+        self.last_k_matches : deque[int] = deque(maxlen=k)
 
     def game_update(
             self,
@@ -18,10 +19,12 @@ class Player:
         ):
         self.last_match = match_date
         self.num_games += 1
+        self.last_k_matches.append(1 if win else 0)
 
         if win:
             self.num_wins += 1
             self.wins[rival] += 1 
+
 
 
     def get_win_rate(self) -> float :
@@ -36,7 +39,12 @@ class Player:
             return 1 - (15 / days_since_last_match)
         else:
             return 1 / days_since_last_match
-    
+        
+    def get_last_k_matches_win_rate(self) -> float:
+        if not self.last_k_matches:
+            return 0.5
+        return sum(self.last_k_matches) / len(self.last_k_matches)
+
 
 
 @dataclass
@@ -49,6 +57,7 @@ class Match:
     max_bet_diff : float
     avg_bet_diff : float
     fatigue_diff : float
+    last_k_matches_win_rate_diff : float
     winner : int
 
 
@@ -89,6 +98,10 @@ class MatchBuilder:
     def add_fatigue_diff(self, fatigue_diff : float):
         self.fatigue_diff : float = fatigue_diff
         return self
+    
+    def add_last_k_matches_win_rate_diff(self, last_k_matches_win_rate_diff : float):
+        self.last_k_matches_win_rate_diff : float = last_k_matches_win_rate_diff
+        return self
 
     def build(self):
         return Match(
@@ -100,5 +113,6 @@ class MatchBuilder:
             max_bet_diff = self.max_bet_diff,
             avg_bet_diff = self.avg_bet_diff,
             fatigue_diff = self.fatigue_diff,
+            last_k_matches_win_rate_diff = self.last_k_matches_win_rate_diff,
             winner = self.winner
         )

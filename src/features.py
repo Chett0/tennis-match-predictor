@@ -19,6 +19,7 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
         h2h_diff = winner_player.wins[loser_player_name] - loser_player.wins[winner_player_name]
         win_rate_diff = winner_player.get_win_rate() - loser_player.get_win_rate()
         fatigue_diff = winner_player.get_fatigue(row["Date"]) - loser_player.get_fatigue(row["Date"])
+        last_k_matches_win_rate_diff = winner_player.get_last_k_matches_win_rate() - loser_player.get_last_k_matches_win_rate()
 
         match_builder = MatchBuilder()
 
@@ -34,6 +35,7 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
                 .add_max_bet_diff(row["MaxW"] - row["MaxL"])
                 .add_avg_bet_diff(row["AvgW"] - row["AvgL"])
                 .add_fatigue_diff(fatigue_diff)
+                .add_last_k_matches_win_rate_diff(last_k_matches_win_rate_diff)
                 .add_winner(0)
                 .build()
             )
@@ -50,6 +52,7 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
                 .add_max_bet_diff(row["MaxL"] - row["MaxW"])
                 .add_avg_bet_diff(row["AvgL"] - row["AvgW"])
                 .add_fatigue_diff(-1 * fatigue_diff)
+                .add_last_k_matches_win_rate_diff(-1 * last_k_matches_win_rate_diff)
                 .add_winner(1)
                 .build()
             )
