@@ -9,7 +9,10 @@ class Player:
 
     def __init__(self, k = 5):
         self.last_match = None
-        self.wins : dict[str, int] = defaultdict(int)
+        self.wins : dict[str, dict[str, int]] = defaultdict(lambda : {
+                "matches" : 0,
+                "sets" : 0
+        })
         self.num_games : int = 0
         self.num_wins : int = 0
         self.last_k_matches : deque[int] = deque(maxlen=k)
@@ -28,7 +31,8 @@ class Player:
             rival : str,
             match_date : datetime,
             court : str,
-            surface : str
+            surface : str,
+            sets_won : int = 0,
         ):
         self.last_match = match_date
         self.num_games += 1
@@ -36,8 +40,9 @@ class Player:
 
         if win:
             self.num_wins += 1
-            self.wins[rival] += 1 
-
+            self.wins[rival]["matches"] += 1
+            self.wins[rival]["sets"] += sets_won
+        
         self.court_performance[court]["games"] += 1
         self.surface_performance[surface]["games"] += 1
         if win:
@@ -87,6 +92,7 @@ class Match:
     player_1 : str
     rank_diff : int
     h2h_diff : int
+    sets_h2h_diff : int
     win_rate_diff : float
     max_bet_diff : float
     avg_bet_diff : float
@@ -113,6 +119,10 @@ class MatchBuilder:
     
     def add_h2h_diff(self, h2h_diff : int):
         self.h2h_diff : int = h2h_diff
+        return self
+    
+    def add_sets_h2h_diff(self, sets_h2h_diff : int):
+        self.sets_h2h_diff : int = sets_h2h_diff
         return self
     
     def add_win_rate_diff(self, win_rate_diff : float):
@@ -153,6 +163,7 @@ class MatchBuilder:
             player_1 = self.player_1,
             rank_diff = self.rank_diff,
             h2h_diff = self.h2h_diff,
+            sets_h2h_diff = self.sets_h2h_diff,
             win_rate_diff = self.win_rate_diff,
             max_bet_diff = self.max_bet_diff,
             avg_bet_diff = self.avg_bet_diff,

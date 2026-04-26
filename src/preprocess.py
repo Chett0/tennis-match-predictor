@@ -31,7 +31,7 @@ def load_data() -> pd.DataFrame:
 def fill_missing_values(df : pd.DataFrame) -> pd.DataFrame:
     """Fill missing values using defaults."""
 
-    df[BET_COLUMNS] = df[BET_COLUMNS].fillna(0.5)
+    df[BET_COLUMNS] = df[BET_COLUMNS].fillna(1)
 
     max_rank = max(df["WRank"].max(), df["LRank"].max())
     df[RANK_COLUMNS] = df[RANK_COLUMNS].fillna(max_rank + 100)
