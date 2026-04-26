@@ -66,6 +66,7 @@ def remove_data(df : pd.DataFrame) -> pd.DataFrame:
 
     df.drop(columns=["BFEW", "BFEL"], inplace=True, errors="ignore")
     df = df[df["Comment"] != "Walkover"]
+    df = df[df["Wsets"].notna() & df["Lsets"].notna()]
 
     return df
 
