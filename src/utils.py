@@ -54,6 +54,9 @@ class Player:
             return 0
         days_since_last_match = (match_date - self.last_match).days
 
+        if days_since_last_match == 0:
+            return 0
+
         if days_since_last_match > 15:
             return 1 - (15 / days_since_last_match)
         else:
