@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from collections import defaultdict, deque
 from datetime import datetime
 
+RAW_DATA_PATH = "../data/raw/"
+PROCESSED_DATA_PATH = "../data/processed/"
+
 class Player:
 
     def __init__(self, k = 5):
