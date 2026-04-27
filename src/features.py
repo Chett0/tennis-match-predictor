@@ -31,13 +31,12 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
         court_win_rate_diff : float = winner_court_win_rate - loser_court_win_rate
         surface_win_rate_diff : float = winner_surface_win_rate - loser_surface_win_rate
 
-        match_builder = MatchBuilder()
+        match_builder = MatchBuilder().add_tournament(row["Tournament"]).add_round(row["Round"])
 
         if np.random.rand() < 0.5:
             
             matches.append(
                 match_builder
-                .add_round(row["Round"])
                 .add_rank_diff(row["WRank"] - row["LRank"])
                 .add_h2h_diff(h2h_diff)
                 .add_sets_h2h_diff(sets_h2h_diff)
@@ -56,7 +55,6 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
 
             matches.append(
                 match_builder
-                .add_round(row["Round"])
                 .add_rank_diff(row["LRank"] - row["WRank"])
                 .add_h2h_diff(-1 * h2h_diff)
                 .add_sets_h2h_diff(-1 * sets_h2h_diff)

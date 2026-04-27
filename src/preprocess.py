@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import glob
-from sklearn.preprocessing import OrdinalEncoder
+from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 
 from utils import RAW_DATA_PATH, PROCESSED_DATA_PATH
 
@@ -86,6 +86,9 @@ def categorical_to_numerical(df : pd.DataFrame) -> pd.DataFrame:
     ]]
     round_encoder = OrdinalEncoder(categories=round_order)
     df["Round"] = round_encoder.fit_transform(df[["Round"]]) 
+
+    tournament_encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+    df["Tournament"] = tournament_encoder.fit_transform(df[["Tournament"]])
 
     return df
 
