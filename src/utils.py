@@ -33,8 +33,12 @@ class Player:
             court : str,
             surface : str,
             sets_won : int = 0,
+            games_played : int = 0,
         ):
-        self.last_match = match_date
+        self.last_match = {
+            "date" : match_date,
+            "games_played" : games_played
+        }
         self.num_games += 1
         self.last_k_matches.append(1 if win else 0)
 
@@ -54,18 +58,21 @@ class Player:
     def get_win_rate(self) -> float :
         return self.num_wins / self.num_games if self.num_games > 0 else 0.5
     
-    def get_fatigue(self, match_date : datetime) -> float:
+    def get_fatigue(self, match_date : datetime, long_stop_days : int = 15, max_games : int = 39) -> float:
+
         if self.last_match is None:
-            return 0
-        days_since_last_match = (match_date - self.last_match).days
+            return 1
+        
+        days_since_last_match = (match_date - self.last_match["date"]).days
+        last_match_games = self.last_match["games_played"]
 
         if days_since_last_match == 0:
-            return 0
+            return 1
 
-        if days_since_last_match > 15:
-            return 1 - (15 / days_since_last_match)
+        if days_since_last_match > long_stop_days:
+            return long_stop_days / days_since_last_match
         else:
-            return 1 / days_since_last_match
+            return (last_match_games / max_games) / days_since_last_match
         
     def get_last_k_matches_win_rate(self) -> float:
         if not self.last_k_matches:
@@ -91,6 +98,7 @@ class Match:
     round : int
     tournament : int
     series : int
+    date : datetime
     rank_diff : int
     h2h_diff : int
     sets_h2h_diff : int
@@ -116,6 +124,10 @@ class MatchBuilder:
     
     def add_tournament(self, tournament : int):
         self.tournament : int = tournament
+        return self
+    
+    def add_date(self, date : datetime):
+        self.date : datetime = date
         return self
 
     def add_rank_diff(self, rank_diff : int):
@@ -167,6 +179,7 @@ class MatchBuilder:
             round = self.round,
             tournament = self.tournament,
             series = self.series,
+            date = self.date,
             rank_diff = self.rank_diff,
             h2h_diff = self.h2h_diff,
             sets_h2h_diff = self.sets_h2h_diff,

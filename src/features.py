@@ -23,7 +23,8 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
         h2h_diff = winner_player.wins[loser_player_name]["matches"] - loser_player.wins[winner_player_name]["matches"]
         sets_h2h_diff = winner_player.wins[loser_player_name]["sets"] - loser_player.wins[winner_player_name]["sets"]
         win_rate_diff = winner_player.get_win_rate() - loser_player.get_win_rate()
-        fatigue_diff = winner_player.get_fatigue(row["Date"]) - loser_player.get_fatigue(row["Date"])
+        max_games = 39 if row["Best of"] == 3 else 65
+        fatigue_diff = winner_player.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games) - loser_player.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games)
         last_k_matches_win_rate_diff = winner_player.get_last_k_matches_win_rate() - loser_player.get_last_k_matches_win_rate()
 
         winner_court_win_rate, winner_surface_win_rate = winner_player.get_court_surface_performance(row["Court"], row["Surface"])
@@ -31,7 +32,11 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
         court_win_rate_diff : float = winner_court_win_rate - loser_court_win_rate
         surface_win_rate_diff : float = winner_surface_win_rate - loser_surface_win_rate
 
-        match_builder = MatchBuilder().add_tournament(row["Tournament"]).add_round(row["Round"]).add_series(row["Series"])
+        winner_games_won = row["W1"] + row["W2"] + row["W3"] + row["W4"] + row["W5"]
+        loser_games_won = row["L1"] + row["L2"] + row["L3"] + row["L4"] + row["L5"]
+        games_played = winner_games_won + loser_games_won
+
+        match_builder = MatchBuilder().add_tournament(row["Tournament"]).add_round(row["Round"]).add_series(row["Series"]).add_date(row["Date"])
 
         if np.random.rand() < 0.5:
             
@@ -75,7 +80,8 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
             match_date = row["Date"],
             court = row["Court"],
             surface = row["Surface"],
-            sets_won = row["Wsets"]
+            sets_won = row["Wsets"],
+            games_played = games_played,
         )
         loser_player.game_update(
             win = False,
@@ -83,7 +89,8 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
             match_date = row["Date"],
             court = row["Court"],
             surface = row["Surface"],
-            sets_won = row["Lsets"]
+            sets_won = row["Lsets"],
+            games_played = games_played,
         )
     
     return pd.DataFrame(matches)
