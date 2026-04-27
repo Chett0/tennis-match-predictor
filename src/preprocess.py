@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import glob
+from sklearn.preprocessing import OrdinalEncoder
 
 from utils import RAW_DATA_PATH, PROCESSED_DATA_PATH
 
@@ -70,6 +71,23 @@ def remove_data(df : pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+def categorical_to_numerical(df : pd.DataFrame) -> pd.DataFrame:
+    """Convert categorical columns to numerical."""
+
+    round_order = [[
+        "Round Robin",
+        "1st Round",
+        "2nd Round",
+        "3rd Round",
+        "4th Round",
+        "Quarterfinals",
+        "Semifinals",
+        "The Final"
+    ]]
+    round_encoder = OrdinalEncoder(categories=round_order)
+    df["Round"] = round_encoder.fit_transform(df[["Round"]]) 
+
+    return df
 
 def align_types(df : pd.DataFrame) -> pd.DataFrame:
     """Convert columns type."""
@@ -85,6 +103,7 @@ def clean_data(df : pd.DataFrame) -> pd.DataFrame:
 
     df = remove_data(df)
     df = fill_missing_values(df)
+    df = categorical_to_numerical(df)
     df = align_types(df)    
 
     return df

@@ -37,8 +37,7 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
             
             matches.append(
                 match_builder
-                .add_first_player(winner_player_name)
-                .add_second_player(loser_player_name)
+                .add_round(row["Round"])
                 .add_rank_diff(row["WRank"] - row["LRank"])
                 .add_h2h_diff(h2h_diff)
                 .add_sets_h2h_diff(sets_h2h_diff)
@@ -57,8 +56,7 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
 
             matches.append(
                 match_builder
-                .add_first_player(loser_player_name)
-                .add_second_player(winner_player_name)
+                .add_round(row["Round"])
                 .add_rank_diff(row["LRank"] - row["WRank"])
                 .add_h2h_diff(-1 * h2h_diff)
                 .add_sets_h2h_diff(-1 * sets_h2h_diff)
