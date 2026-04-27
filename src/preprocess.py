@@ -90,6 +90,16 @@ def categorical_to_numerical(df : pd.DataFrame) -> pd.DataFrame:
     tournament_encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
     df["Tournament"] = tournament_encoder.fit_transform(df[["Tournament"]])
 
+    level_order = [[
+        "ATP250",
+        "ATP500",
+        "Masters 1000",
+        "Masters Cup",
+        "Grand Slam"
+    ]]
+    level_encoder = OrdinalEncoder(categories=level_order)
+    df["Series"] = level_encoder.fit_transform(df[["Series"]])
+
     return df
 
 def align_types(df : pd.DataFrame) -> pd.DataFrame:

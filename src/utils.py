@@ -88,8 +88,9 @@ class Player:
 
 @dataclass
 class Match:
-    tournament: int
-    round: int
+    round : int
+    tournament : int
+    series : int
     rank_diff : int
     h2h_diff : int
     sets_h2h_diff : int
@@ -107,6 +108,10 @@ class MatchBuilder:
 
     def add_round(self, round : int):
         self.round : int = round
+        return self
+    
+    def add_series(self, series : int):
+        self.series : int = series
         return self
     
     def add_tournament(self, tournament : int):
@@ -161,6 +166,7 @@ class MatchBuilder:
         return Match(
             round = self.round,
             tournament = self.tournament,
+            series = self.series,
             rank_diff = self.rank_diff,
             h2h_diff = self.h2h_diff,
             sets_h2h_diff = self.sets_h2h_diff,

@@ -31,7 +31,7 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
         court_win_rate_diff : float = winner_court_win_rate - loser_court_win_rate
         surface_win_rate_diff : float = winner_surface_win_rate - loser_surface_win_rate
 
-        match_builder = MatchBuilder().add_tournament(row["Tournament"]).add_round(row["Round"])
+        match_builder = MatchBuilder().add_tournament(row["Tournament"]).add_round(row["Round"]).add_series(row["Series"])
 
         if np.random.rand() < 0.5:
             
