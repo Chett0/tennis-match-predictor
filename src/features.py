@@ -44,6 +44,7 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
                 match_builder
                 .add_rank_diff(row["WRank"] - row["LRank"])
                 .add_h2h_diff(h2h_diff)
+                .add_date(row["Date"])
                 .add_sets_h2h_diff(sets_h2h_diff)
                 .add_win_rate_diff(win_rate_diff)
                 .add_max_bet_diff(row["MaxW"] - row["MaxL"])
@@ -62,6 +63,7 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
                 match_builder
                 .add_rank_diff(row["LRank"] - row["WRank"])
                 .add_h2h_diff(-1 * h2h_diff)
+                .add_date(row["Date"])
                 .add_sets_h2h_diff(-1 * sets_h2h_diff)
                 .add_win_rate_diff(-1 * win_rate_diff)
                 .add_max_bet_diff(row["MaxL"] - row["MaxW"])
