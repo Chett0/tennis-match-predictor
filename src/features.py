@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import pandas as pd
 import numpy as np
 from utils import PROCESSED_DATA_PATH, Player, MatchBuilder

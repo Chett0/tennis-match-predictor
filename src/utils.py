@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 from dataclasses import dataclass
 from collections import defaultdict, deque
 from datetime import datetime
