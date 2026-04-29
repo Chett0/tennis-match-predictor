@@ -8,26 +8,13 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from xgboost import XGBClassifier
 
-from utils import PROCESSED_DATA_PATH
+from src.data import PROCESSED_DATA_PATH, train_test_split
 
 
 def train_model(df : pd.DataFrame):
     """Train a model on the given dataframe."""
 
-    years = df['date'].dt.year.max() - df['date'].dt.year.min()
-
-    train_df = df[df["date"] < "2025-01-01"]
-    test_df = df[df["date"] >= "2025-01-01"]
-
-    train_df = train_df.drop(columns=["date"])
-    test_df = test_df.drop(columns=["date"])
-
-    X_train = train_df.drop(columns=["winner"])
-    y_train = train_df["winner"]
-
-    X_test = test_df.drop(columns=["winner"])
-    y_test = test_df["winner"]
-
+    X_train, X_test, y_train, y_test, years = train_test_split(df)
 
     tscv = TimeSeriesSplit(n_splits=years - 1)
     model = RandomForestClassifier(random_state=42)
@@ -53,12 +40,14 @@ def train_model(df : pd.DataFrame):
 
     return fitted_model
 
-def training_pipeling():
-    df = pd.read_excel(f'{PROCESSED_DATA_PATH}tennis_matches_features.xlsx')
+def read_processed_data() -> pd.DataFrame:
+    return pd.read_excel(f'{PROCESSED_DATA_PATH}tennis_matches_features.xlsx')
+
+def training_pipeling(df : pd.DataFrame):
     model = train_model(df)
 
 if __name__ == "__main__":
-    df = pd.read_excel(f'{PROCESSED_DATA_PATH}tennis_matches_features.xlsx')
+    df = read_processed_data()
     model = train_model(df)
     
     

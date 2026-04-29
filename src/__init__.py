@@ -8,18 +8,22 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-from preprocess import cleaning_pipeline
+import pandas as pd
+from src.data import load_data
+
+from preprocess import preprocess_pipeline
 from features import feature_engineering_pipeline
 from training import training_pipeling
 
 def run_pipeline():
 
-    cleaning_pipeline()
+    df : pd.DataFrame = load_data()
 
-    feature_engineering_pipeline()
+    preprocess_pipeline(df)
 
-    training_pipeling()
+    feature_engineering_pipeline(df)
 
+    training_pipeling(df)
 
 if __name__ == "__main__":
     run_pipeline()

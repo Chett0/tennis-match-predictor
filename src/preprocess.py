@@ -4,33 +4,14 @@ logger = logging.getLogger(__name__)
 
 import pandas as pd
 import numpy as np
-import glob
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+from src.data import PROCESSED_DATA_PATH, load_data
 
-from utils import RAW_DATA_PATH, PROCESSED_DATA_PATH
 
 BET_COLUMNS = ["B365W", "B365L", "PSW", "PSL", "MaxW", "MaxL", "AvgW", "AvgL"]
 RANK_COLUMNS = ["WRank", "LRank"]
 POINT_COLUMNS = ["WPts", "LPts"]
 GAME_COLUMNS = ["W1", "L1", "W2", "L2", "W3", "L3", "W4", "L4", "W5", "L5"]
-
-
-def load_2025_data() -> pd.DataFrame:
-    data : pd.DataFrame = pd.read_excel(f'{RAW_DATA_PATH}2025.xlsx')
-    return data
-
-
-def load_data() -> pd.DataFrame:
-    files = glob.glob(f'{RAW_DATA_PATH}*.xlsx')
-
-    dfs : list[pd.DataFrame] = []
-
-    for file in files:
-        df : pd.DataFrame = pd.read_excel(file)
-        dfs.append(df)
-
-    df = pd.concat(dfs, ignore_index=True)
-    return df
 
 
 def fill_missing_values(df : pd.DataFrame) -> pd.DataFrame:
@@ -128,10 +109,10 @@ def clean_data(df : pd.DataFrame) -> pd.DataFrame:
 def save_clean_data(df : pd.DataFrame):
     df.to_excel(f'{PROCESSED_DATA_PATH}tennis_matches_clean.xlsx', index=False)
 
-def cleaning_pipeline():
-    df = load_data()
+def preprocess_pipeline(df : pd.DataFrame):
     df = clean_data(df)
     save_clean_data(df)
 
 if __name__ == "__main__":
-    cleaning_pipeline()
+    df : pd.DataFrame = load_data()
+    preprocess_pipeline(df)

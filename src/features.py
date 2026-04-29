@@ -4,7 +4,9 @@ logger = logging.getLogger(__name__)
 
 import pandas as pd
 import numpy as np
-from utils import PROCESSED_DATA_PATH, Player, MatchBuilder
+from utils import Player, MatchBuilder
+
+from src.data import PROCESSED_DATA_PATH
 
 
 def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
@@ -104,10 +106,13 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
 def save_features(df : pd.DataFrame):
     df.to_excel(f'{PROCESSED_DATA_PATH}tennis_matches_features.xlsx', index=False)
 
-def feature_engineering_pipeline():
-    df = pd.read_excel(f'{PROCESSED_DATA_PATH}tennis_matches_clean.xlsx')
+def read_clean_data() -> pd.DataFrame:
+    return pd.read_excel(f'{PROCESSED_DATA_PATH}tennis_matches_clean.xlsx')
+
+def feature_engineering_pipeline(df : pd.DataFrame):
     df = feature_engineering(df)
     save_features(df)
 
 if __name__ == "__main__":
-    feature_engineering_pipeline()
+    df : pd.DataFrame = read_clean_data()
+    feature_engineering_pipeline(df)
