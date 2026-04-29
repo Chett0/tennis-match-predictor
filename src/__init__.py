@@ -8,13 +8,14 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-from preprocess import cleaning_pipeline
+from preprocess import clean
 from features import feature_engineering_pipeline
 from training import training_pipeling
+from sklearn.pipeline import Pipeline
 
 def run_pipeline():
 
-    cleaning_pipeline()
+    cleaning_pipeline : Pipeline = clean()
 
     feature_engineering_pipeline()
 
