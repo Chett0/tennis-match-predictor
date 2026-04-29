@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 import pandas as pd
 import glob
 
@@ -6,6 +10,8 @@ PROCESSED_DATA_PATH = "../data/processed/"
 
 
 def load_data() -> pd.DataFrame:
+
+    logger.info("Loading data from raw files")
     
     files = glob.glob(f'{RAW_DATA_PATH}*.xlsx')
 
@@ -16,6 +22,9 @@ def load_data() -> pd.DataFrame:
         dfs.append(df)
 
     df = pd.concat(dfs, ignore_index=True)
+
+    logger.info(f"Loaded {len(df)} rows from {len(files)} files.")
+
     return df
 
 

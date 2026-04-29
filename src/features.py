@@ -6,10 +6,12 @@ import pandas as pd
 import numpy as np
 from utils import Player, MatchBuilder
 
-from src.data import PROCESSED_DATA_PATH
+from data_loader import PROCESSED_DATA_PATH
 
 
 def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
+
+    df = df.copy()
     
     matches = [] #: list[pd.Series] = []
     players : dict[str, Player] = {}
@@ -101,7 +103,8 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
             games_played = games_played,
         )
     
-    return pd.DataFrame(matches)
+    df = pd.DataFrame(matches)
+    return df
 
 def save_features(df : pd.DataFrame):
     df.to_excel(f'{PROCESSED_DATA_PATH}tennis_matches_features.xlsx', index=False)
@@ -109,9 +112,16 @@ def save_features(df : pd.DataFrame):
 def read_clean_data() -> pd.DataFrame:
     return pd.read_excel(f'{PROCESSED_DATA_PATH}tennis_matches_clean.xlsx')
 
-def feature_engineering_pipeline(df : pd.DataFrame):
+def feature_engineering_pipeline(df : pd.DataFrame) -> pd.DataFrame:
+
+    logger.info("Starting feature engineering pipeline")
+
     df = feature_engineering(df)
     save_features(df)
+
+    logger.info("Feature engineering pipeline completed")
+
+    return df
 
 if __name__ == "__main__":
     df : pd.DataFrame = read_clean_data()
