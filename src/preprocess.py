@@ -43,8 +43,6 @@ SERIES_ORDER = [[
     "Grand Slam"
 ]]
 
-INT_COLS = [*RANK_COLS, *GAME_COLS]
-
 
 class DropFeatureSelector(BaseEstimator, TransformerMixin):
     """Custom transformer to drop specified features"""
@@ -56,7 +54,8 @@ class DropFeatureSelector(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        return X.drop(columns=self.features_to_drop)
+        X.drop(columns=self.features_to_drop, inplace=True)
+        return X
     
 class RowFilter(BaseEstimator, TransformerMixin):
     """Custom transformer to filter rows based on a condition"""
@@ -74,18 +73,22 @@ class RowFilter(BaseEstimator, TransformerMixin):
 class AlignTypesTransformer(BaseEstimator, TransformerMixin):
     """Convert selected columns to selected types"""
 
-    def __init__(self, int_columns):
-        self.int_columns = int_columns
+    def __init__(self):
+        pass
 
     def fit(self, X, y=None):
         return self
 
-    def transform(self, X):
-        X = X.copy()
+    def transform(self, X : pd.DataFrame):
+        
+        cols = [
+            col for col in X.select_dtypes(include='float').columns
+            if X[col].dropna().apply(float.is_integer).all() 
+        ]
 
-        X[self.int_columns] = X[self.int_columns].apply(
-            pd.to_numeric, errors="coerce"
-        ).astype("Int64")
+        X[cols] = X[cols].astype("Int64")
+
+        print(cols)
 
         return X
 
@@ -119,11 +122,6 @@ class BestOfImputer(BaseEstimator, TransformerMixin):
 
         return X
 
-
-def clean_columns_names(df : pd.DataFrame) -> pd.DataFrame:
-    df.columns = df.columns.str.replace("num__", "").str.replace("cat__", "").str.replace("remainder__", "")
-    return df
-
 def clean_data(df : pd.DataFrame) -> pd.DataFrame:
 
     game_imputer = SimpleImputer(strategy="constant", fill_value=0)
@@ -150,19 +148,21 @@ def clean_data(df : pd.DataFrame) -> pd.DataFrame:
             ("series_encoder", series_encoder, ["Series"]),
         ],
         remainder="passthrough",
-        verbose_feature_names_out=False
+        verbose_feature_names_out=False,
+        n_jobs=-1
     )
 
-    # Pipeline completa
-    pipeline = Pipeline([
-        ("drop_cols", DropFeatureSelector(["BFEW", "BFEL"])),
-        ("remove_walkovers", RowFilter(lambda df: df["Comment"] != "Walkover")),
-        ("valid_sets", RowFilter(lambda df: df["Wsets"].notna() & df["Lsets"].notna())),
-        ("align_types", AlignTypesTransformer(INT_COLS)),
-        ("preprocessing", preprocessor),
-        ("best_of_imputer", best_of_imputer)
-        # ("clean_columns", FunctionTransformer(clean_columns_names))
-    ])
+    pipeline = Pipeline(
+        steps=[
+            ("drop_cols", DropFeatureSelector(["BFEW", "BFEL"])),
+            ("remove_walkovers", RowFilter(lambda df: df["Comment"] != "Walkover")),
+            ("valid_sets", RowFilter(lambda df: df["Wsets"].notna() & df["Lsets"].notna())),
+            ("preprocessing", preprocessor),
+            ("align_types", AlignTypesTransformer()),
+            ("best_of_imputer", best_of_imputer)
+        ],
+
+    )
 
     df_clean = pipeline.fit_transform(df)
     df = pd.DataFrame(df_clean)
