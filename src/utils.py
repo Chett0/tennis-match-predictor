@@ -1,3 +1,4 @@
+import pandas as pd
 import logging
 
 logger = logging.getLogger(__name__)
@@ -5,6 +6,10 @@ logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from collections import defaultdict, deque
 from datetime import datetime
+
+def get_df_from_pipeline(pipeline, df):
+    df_ = pipeline.fit_transform(df)
+    return pd.DataFrame(df_)
 
 class Player:
 

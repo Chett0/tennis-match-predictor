@@ -1,5 +1,7 @@
 import logging
 
+from sklearn.pipeline import Pipeline
+
 logging.basicConfig(
     filename='../logs/pipeline.log',
     level=logging.DEBUG,
@@ -11,9 +13,10 @@ logger = logging.getLogger(__name__)
 import pandas as pd
 
 from data_loader import load_data
-from preprocess import preprocess_pipeline
+from preprocess import preprocessing_pipeline
 from features import feature_engineering_pipeline
 from training import training_testing_pipeline
+from utils import get_df_from_pipeline
 
 def run_pipeline():
 
@@ -21,9 +24,19 @@ def run_pipeline():
 
     df : pd.DataFrame = load_data()
 
-    df = preprocess_pipeline(df)
+    prep_pipeline : Pipeline = preprocessing_pipeline(df)
 
-    df = feature_engineering_pipeline(df)
+    feat_pipeline : Pipeline = feature_engineering_pipeline(df)
+
+    pipeline = Pipeline(
+        steps=[
+            ("preprocessing", prep_pipeline),
+            ("feature_engineering", feat_pipeline)
+        ]
+    )
+
+    df = get_df_from_pipeline(pipeline, df)
+    df.info()
 
     training_testing_pipeline(df)
 

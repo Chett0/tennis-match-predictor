@@ -1,19 +1,23 @@
+import argparse
 import logging
 
 import sklearn
 from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+
 sklearn.set_config(transform_output="pandas")
 
 logger = logging.getLogger(__name__)
 
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+
+from utils import get_df_from_pipeline
 from data_loader import PROCESSED_DATA_PATH, load_data
-from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
 
 
 BET_COLS = ["B365W", "B365L", "PSW", "PSL", "MaxW", "MaxL", "AvgW", "AvgL"]
@@ -88,8 +92,6 @@ class AlignTypesTransformer(BaseEstimator, TransformerMixin):
 
         X[cols] = X[cols].astype("Int64")
 
-        print(cols)
-
         return X
 
 class BestOfImputer(BaseEstimator, TransformerMixin):
@@ -122,7 +124,7 @@ class BestOfImputer(BaseEstimator, TransformerMixin):
 
         return X
 
-def clean_data(df : pd.DataFrame) -> pd.DataFrame:
+def preprocessing_pipeline(df : pd.DataFrame) -> Pipeline:
 
     game_imputer = SimpleImputer(strategy="constant", fill_value=0)
     sets_imputer = SimpleImputer(strategy="constant", fill_value=0)
@@ -164,25 +166,37 @@ def clean_data(df : pd.DataFrame) -> pd.DataFrame:
 
     )
 
-    df_clean = pipeline.fit_transform(df)
-    df = pd.DataFrame(df_clean)
-    return df
+    return pipeline
 
 
 def save_clean_data(df : pd.DataFrame):
     df.to_excel(f'{PROCESSED_DATA_PATH}tennis_matches_clean.xlsx', index=False)
 
-def preprocess_pipeline(df : pd.DataFrame):
+def clean_data(save_data : bool = False):
 
     logger.info("Starting preprocessing pipeline")
 
-    df = clean_data(df)
-    save_clean_data(df)
+    df : pd.DataFrame = load_data()
+    pipeline = preprocessing_pipeline(df)
+    df = get_df_from_pipeline(pipeline, df)
+    df.info()
+    if save_data:
+        save_clean_data(df)
 
     logger.info("Preprocessing pipeline completed")
 
     return df
 
 if __name__ == "__main__":
-    df : pd.DataFrame = load_data()
-    preprocess_pipeline(df)
+    
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--save",
+        action="store_true",
+        help="Save preprocessed data to Excel file"
+    )
+
+    args = parser.parse_args()
+
+    clean_data(save_data=args.save)
