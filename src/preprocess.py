@@ -1,11 +1,15 @@
 import logging
 
+import sklearn
+from sklearn.compose import ColumnTransformer
+sklearn.set_config(transform_output="pandas")
+
 logger = logging.getLogger(__name__)
 
 import pandas as pd
 import numpy as np
 import glob
-from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+from sklearn.preprocessing import FunctionTransformer, OrdinalEncoder, OneHotEncoder, StandardScaler
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
@@ -16,6 +20,7 @@ BET_COLS = ["B365W", "B365L", "PSW", "PSL", "MaxW", "MaxL", "AvgW", "AvgL"]
 RANK_COLS = ["WRank", "LRank"]
 POINT_COLS = ["WPts", "LPts"]
 GAME_COLS = ["W1", "L1", "W2", "L2", "W3", "L3", "W4", "L4", "W5", "L5"]
+SETS_COLS = ["Wsets", "Lsets"]
 
 CAT_COLS = ["Tournament"]
 
@@ -130,120 +135,64 @@ class BestOfImputer(BaseEstimator, TransformerMixin):
         )
 
         return X
-    
-class SimpleImputerCustom(BaseEstimator, TransformerMixin):
-    """Custom transformer"""
 
-    def __init__(self, variables, strategy="constant", fill_value=0):
-        self.variables = variables
-        self.strategy = strategy
-        self.fill_value = fill_value
-        self.imputer = SimpleImputer(missing_values=np.nan, strategy=strategy, fill_value=fill_value)
-
-    def fit(self, X, y=None):
-        X_ = X.loc[:, self.variables]
-        self.imputer.fit(X_)
-        return self
-
-    def transform(self, X):
-        X_ = X.loc[:,self.variables]
-        X_transformed = pd.DataFrame(self.imputer.transform(X_), # type: ignore
-                         columns=self.variables)
-        X.drop(self.variables, axis= 1, inplace=True)
-        X[self.variables] = X_transformed[self.variables].values
-        return X
-
-class OneHotEncoderCustom(BaseEstimator, TransformerMixin):
-    def __init__(self, variables):
-        self.variables = variables
-        self.ohe = OneHotEncoder(drop='first', 
-            handle_unknown = 'ignore')
-    def fit(self, X, y = None):
-        X_ = X.loc[:,self.variables]
-        self.ohe.fit(X_)
-        return self
-    def transform(self, X):
-        X_ = X.loc[:,self.variables]
-        X_transformed = pd.DataFrame(self.ohe.transform(X_).toarray(), columns= self.ohe.get_feature_names_out()) # type: ignore
-        X_remaining = X.drop(self.variables, axis= 1)
-        X = pd.concat([X_remaining, X_transformed], axis=1)
-        return X
-    
-class OrdinalEncoderCustom(BaseEstimator, TransformerMixin):
-    def __init__(self, variables, categories):
-        self.variables = variables
-        self.categories = categories
-        self.encoder = OrdinalEncoder(
-            categories=categories,
-            handle_unknown="use_encoded_value",
-            unknown_value=-1
-        )
-
-    def fit(self, X, y=None):
-        X_ = X.loc[:, self.variables]
-        self.encoder.fit(X_)
-        return self
-
-    def transform(self, X):
-        X = X.copy()
-        X_ = X.loc[:, self.variables]
-
-        X_encoded = pd.DataFrame(
-            self.encoder.transform(X_),
-            columns=self.variables,
-            index=X.index
-        )
-
-        X.drop(self.variables, axis=1, inplace=True)
-        X[self.variables] = X_encoded
-
-        return X
 
 def save_clean_data(df):
     df.to_csv(f'{PROCESSED_DATA_PATH}tennis_matches_clean.csv', index=False)
 
-def clean():
+def clean_columns_names(df : pd.DataFrame) -> pd.DataFrame:
+    df.columns = df.columns.str.replace("num__", "").str.replace("cat__", "").str.replace("remainder__", "")
+    return df
 
-        df = load_data()
+def clean_data() -> pd.DataFrame:
 
-        game_imputer = SimpleImputerCustom(variables=GAME_COLS, strategy="constant", fill_value=0)
-        bet_imputer = SimpleImputerCustom(variables=BET_COLS, strategy="constant", fill_value=1)
-        rank_imputer = SimpleImputerCustom(variables=RANK_COLS, strategy="constant", fill_value=df[RANK_COLS].max().max())
-        point_imputer = SimpleImputerCustom(variables=POINT_COLS, strategy="constant", fill_value=df[POINT_COLS].min().min())
-        best_of_imputer = BestOfImputer()
+    df = load_data()   
 
-        categorical_encoder = OneHotEncoderCustom(variables=CAT_COLS)
-        round_encoder = OrdinalEncoderCustom(variables=["Round"], categories=ROUND_ORDER)
-        series_encoder = OrdinalEncoderCustom(variables=["Series"], categories=SERIES_ORDER)
+    game_imputer = SimpleImputer(strategy="constant", fill_value=0)
+    sets_imputer = SimpleImputer(strategy="constant", fill_value=0)
+    bet_imputer = SimpleImputer(strategy="constant", fill_value=1)
+    rank_imputer = SimpleImputer(strategy="constant", fill_value=df[RANK_COLS].max().max())
+    point_imputer = SimpleImputer(strategy="constant", fill_value=df[POINT_COLS].min().min())
+    best_of_imputer = BestOfImputer()
 
-        num_pipeline = Pipeline(steps=[
-            ("game_imputer", game_imputer),
-            ("bet_imputer", bet_imputer),
-            ("rank_imputer", rank_imputer),
-            ("point_imputer", point_imputer),
-            ("best_of_imputer", best_of_imputer)
-        ])
+    categorical_encoder = OneHotEncoder(sparse_output=False)
+    round_encoder = OrdinalEncoder(categories=ROUND_ORDER)
+    series_encoder = OrdinalEncoder(categories=SERIES_ORDER)
 
-        cat_pipeline = Pipeline(steps=[
-            ("categorical_encoder", categorical_encoder),
-            ("round_encoder", round_encoder),
-            ("series_encoder", series_encoder)
-        ])
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("game_imputer", game_imputer, GAME_COLS),
+            ("sets_imputer", sets_imputer, SETS_COLS),
+            ("bet_imputer", bet_imputer, BET_COLS),
+            ("rank_imputer", rank_imputer, RANK_COLS),
+            ("point_imputer", point_imputer, POINT_COLS),
 
-        preprocessor_pipeline = Pipeline(steps=[
-            ("drop_cols", DropFeatureSelector(["BFEW", "BFEL"])),
-            ("remove_walkovers", RowFilter(lambda df: df["Comment"] != "Walkover")),
-            ("valid_sets", RowFilter(lambda df: df["Wsets"].notna() & df["Lsets"].notna())),
-            ("align_types", AlignTypesTransformer(INT_COLS)),
-            ("num_pipeline", num_pipeline),
-            ("cat_pipeline", cat_pipeline)
-        ])
+            ("categorical_encoder", categorical_encoder, CAT_COLS),
+            ("round_encoder", round_encoder, ["Round"]),
+            ("series_encoder", series_encoder, ["Series"]),
+        ],
+        remainder="passthrough",
+        verbose_feature_names_out=False
+    )
 
-        df = preprocessor_pipeline.fit_transform(df)
-        df = pd.DataFrame(df)
-        save_clean_data(df)
-        return df
+    # Pipeline completa
+    pipeline = Pipeline([
+        ("drop_cols", DropFeatureSelector(["BFEW", "BFEL"])),
+        ("remove_walkovers", RowFilter(lambda df: df["Comment"] != "Walkover")),
+        ("valid_sets", RowFilter(lambda df: df["Wsets"].notna() & df["Lsets"].notna())),
+        ("align_types", AlignTypesTransformer(INT_COLS)),
+        ("preprocessing", preprocessor),
+        ("best_of_imputer", best_of_imputer)
+        # ("clean_columns", FunctionTransformer(clean_columns_names))
+    ])
+
+
+    df_clean = pipeline.fit_transform(df)
+    df = pd.DataFrame(df_clean)
+    df.info()
+    save_clean_data(df)
+    return df
 
 
 if __name__ == "__main__":
-    clean()
+    clean_data()
