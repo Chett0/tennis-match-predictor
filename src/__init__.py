@@ -13,7 +13,7 @@ import pandas as pd
 from data_loader import load_data
 from preprocess import preprocess_pipeline
 from features import feature_engineering_pipeline
-from training import training_pipeling
+from training import training_pipeline
 
 def run_pipeline():
 
@@ -23,13 +23,9 @@ def run_pipeline():
 
     df = preprocess_pipeline(df)
 
-    df.info()
-
     df = feature_engineering_pipeline(df)
 
-    df.info()
-
-    training_pipeling(df)
+    training_pipeline(df)
 
 if __name__ == "__main__":
     run_pipeline()

@@ -8,15 +8,17 @@ from datetime import datetime
 
 class Player:
 
-    def __init__(self, k = 5):
+    def __init__(self, k = 20):
         self.last_match = None
-        self.wins : dict[str, dict[str, int]] = defaultdict(lambda : {
+        self.wins = defaultdict(lambda : {
                 "matches" : 0,
-                "sets" : 0
+                "sets" : 0,
         })
         self.num_games : int = 0
         self.num_wins : int = 0
         self.last_k_matches : deque[int] = deque(maxlen=k)
+        self.win_streak : int = 0 
+        self.lose_streak : int = 0
         self.court_performance : dict[str, dict[str, int]] = defaultdict(lambda : {
             "games" : 0, 
             "wins" : 0
@@ -47,7 +49,11 @@ class Player:
             self.num_wins += 1
             self.wins[rival]["matches"] += 1
             self.wins[rival]["sets"] += sets_won
-        
+            self.win_streak += 1
+            self.lose_streak = 0
+        else:
+            self.win_streak = 0
+            self.lose_streak += 1
         self.court_performance[court]["games"] += 1
         self.surface_performance[surface]["games"] += 1
         if win:
@@ -108,6 +114,8 @@ class Match:
     avg_bet_diff : float
     fatigue_diff : float
     last_k_matches_win_rate_diff : float
+    win_streak_diff : int
+    lose_streak_diff : int
     court_win_rate_diff : float
     surface_win_rate_diff : float
     winner : int
@@ -167,6 +175,14 @@ class MatchBuilder:
         self.last_k_matches_win_rate_diff : float = last_k_matches_win_rate_diff
         return self
     
+    def add_win_streak_diff(self, win_streak_diff : int):
+        self.win_streak_diff : int = win_streak_diff
+        return self
+    
+    def add_lose_streak_diff(self, lose_streak_diff : int):
+        self.lose_streak_diff : int = lose_streak_diff
+        return self
+    
     def add_court_win_rate_diff(self, court_win_rate_diff : float):
         self.court_win_rate_diff : float = court_win_rate_diff
         return self
@@ -191,5 +207,7 @@ class MatchBuilder:
             last_k_matches_win_rate_diff = self.last_k_matches_win_rate_diff,
             court_win_rate_diff = self.court_win_rate_diff,
             surface_win_rate_diff = self.surface_win_rate_diff,
+            win_streak_diff = self.win_streak_diff,
+            lose_streak_diff = self.lose_streak_diff,
             winner = self.winner
         )

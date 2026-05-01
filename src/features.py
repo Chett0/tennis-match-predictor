@@ -34,6 +34,8 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
         max_games = 39 if row["Best of"] == 3 else 65
         fatigue_diff = winner_player.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games) - loser_player.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games)
         last_k_matches_win_rate_diff = winner_player.get_last_k_matches_win_rate() - loser_player.get_last_k_matches_win_rate()
+        win_streak_diff = winner_player.win_streak - loser_player.win_streak
+        lose_streak_diff = winner_player.lose_streak - loser_player.lose_streak
 
         winner_court_win_rate, winner_surface_win_rate = winner_player.get_court_surface_performance(row["Court"], row["Surface"])
         loser_court_win_rate, loser_surface_win_rate = loser_player.get_court_surface_performance(row["Court"], row["Surface"])
@@ -61,6 +63,8 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
                 .add_last_k_matches_win_rate_diff(last_k_matches_win_rate_diff)
                 .add_court_win_rate_diff(court_win_rate_diff)
                 .add_surface_win_rate_diff(surface_win_rate_diff)
+                .add_win_streak_diff(win_streak_diff)
+                .add_lose_streak_diff(lose_streak_diff)
                 .add_winner(0)
                 .build()
             )
@@ -80,6 +84,8 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
                 .add_last_k_matches_win_rate_diff(-1 * last_k_matches_win_rate_diff)
                 .add_court_win_rate_diff(-1 * court_win_rate_diff)
                 .add_surface_win_rate_diff(-1 * surface_win_rate_diff)
+                .add_win_streak_diff(-1 * win_streak_diff)
+                .add_lose_streak_diff(-1 * lose_streak_diff)
                 .add_winner(1)
                 .build()
             )

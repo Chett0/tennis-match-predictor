@@ -28,12 +28,18 @@ def load_data() -> pd.DataFrame:
     return df
 
 
-def train_test_split(df : pd.DataFrame):
+def train_test_split(df : pd.DataFrame, test_year : int | None = None, test_size : float = 0.2):
 
     years = df['date'].dt.year.max() - df['date'].dt.year.min()
 
-    train_df = df[df["date"] < "2025-01-01"]
-    test_df = df[df["date"] >= "2025-01-01"]
+    if test_year is not None:
+        train_df = df[df['date'].dt.year < test_year]
+        test_df = df[df['date'].dt.year >= test_year]
+    else:
+        train_size = int(len(df) * (1 - test_size))
+
+        train_df = df.iloc[:train_size]
+        test_df = df.iloc[train_size:]
 
     train_df = train_df.drop(columns=["date"])
     test_df = test_df.drop(columns=["date"])
