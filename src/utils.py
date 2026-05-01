@@ -103,7 +103,6 @@ class Player:
 @dataclass
 class Match:
     round : int
-    tournament : int
     series : int
     date : datetime
     rank_diff : int
@@ -120,7 +119,6 @@ class Match:
     surface_win_rate_diff : float
     winner : int
 
-
 class MatchBuilder:
 
     def add_round(self, round : int):
@@ -129,10 +127,6 @@ class MatchBuilder:
     
     def add_series(self, series : int):
         self.series : int = series
-        return self
-    
-    def add_tournament(self, tournament : int):
-        self.tournament : int = tournament
         return self
     
     def add_date(self, date : datetime):
@@ -194,7 +188,6 @@ class MatchBuilder:
     def build(self):
         return Match(
             round = self.round,
-            tournament = self.tournament,
             series = self.series,
             date = self.date,
             rank_diff = self.rank_diff,

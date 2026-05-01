@@ -12,6 +12,8 @@ from data_loader import PROCESSED_DATA_PATH
 def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
 
     df = df.copy()
+
+    TOURNAMENT_COLS = [col for col in df.columns if col.startswith("Tournament")]
     
     matches = [] #: list[pd.Series] = []
     players : dict[str, Player] = {}
@@ -46,7 +48,7 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
         loser_games_won = row["L1"] + row["L2"] + row["L3"] + row["L4"] + row["L5"]
         games_played = winner_games_won + loser_games_won
 
-        match_builder = MatchBuilder().add_tournament(row["Tournament"]).add_round(row["Round"]).add_series(row["Series"]).add_date(row["Date"])
+        match_builder = MatchBuilder().add_round(row["Round"]).add_series(row["Series"]).add_date(row["Date"])
 
         if np.random.rand() < 0.5:
             
@@ -109,7 +111,8 @@ def feature_engineering(df : pd.DataFrame) -> pd.DataFrame:
             games_played = games_played,
         )
     
-    df = pd.DataFrame(matches)
+    matches_df = pd.DataFrame(matches)
+    df = pd.concat([df[TOURNAMENT_COLS].reset_index(drop=True), matches_df.reset_index(drop=True)], axis=1)
     return df
 
 def save_features(df : pd.DataFrame):
