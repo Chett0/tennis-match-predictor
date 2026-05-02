@@ -8,8 +8,10 @@ logger = logging.getLogger(__name__)
 import pandas as pd
 import numpy as np
 
-from utils import Player, MatchBuilder, Match, get_df_from_pipeline
-from data_loader import PROCESSED_DATA_PATH
+from src.utils.utils import get_df_from_pipeline
+from src.utils.match import Match, MatchBuilder
+from src.utils.player import Player
+from src.data.loader import PROCESSED_DATA_PATH
 
 class FeatureEngineringTransformer:
 

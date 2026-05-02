@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 import pandas as pd
 import numpy as np
 
-from utils import get_df_from_pipeline
-from data_loader import PROCESSED_DATA_PATH, load_data
+from src.utils.utils import get_df_from_pipeline
+from src.data.loader import PROCESSED_DATA_PATH, load_data
 
 
 BET_COLS = ["B365W", "B365L", "PSW", "PSL", "MaxW", "MaxL", "AvgW", "AvgL"]
@@ -179,7 +179,6 @@ def clean_data(save_data : bool = False):
     df : pd.DataFrame = load_data()
     pipeline = preprocessing_pipeline(df)
     df = get_df_from_pipeline(pipeline, df)
-    df.info()
     if save_data:
         save_clean_data(df)
 

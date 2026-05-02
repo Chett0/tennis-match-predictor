@@ -3,7 +3,7 @@ from typing import Type
 
 from sklearn.inspection import permutation_importance
 
-from evaluation import evaluate_model
+from src.evaluation.evaluation import evaluate_model
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from xgboost import XGBClassifier
 
-from data_loader import PROCESSED_DATA_PATH, train_test_split
+from src.data.loader import PROCESSED_DATA_PATH, train_test_split
 
 
 def train_test(

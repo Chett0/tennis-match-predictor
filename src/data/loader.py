@@ -5,15 +5,19 @@ logger = logging.getLogger(__name__)
 import pandas as pd
 import glob
 
-RAW_DATA_PATH = "../data/raw/"
-PROCESSED_DATA_PATH = "../data/processed/"
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+RAW_DATA_PATH = PROJECT_ROOT / "data" / "raw"
+PROCESSED_DATA_PATH = PROJECT_ROOT / "data" / "processed"
 
 
 def load_data() -> pd.DataFrame:
 
     logger.info("Loading data from raw files")
     
-    files = glob.glob(f'{RAW_DATA_PATH}*.xlsx')
+    files = list(RAW_DATA_PATH.glob("*.xlsx"))
 
     dfs : list[pd.DataFrame] = []
 
