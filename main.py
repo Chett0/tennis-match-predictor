@@ -1,7 +1,9 @@
 import logging
 
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
+from sklearn.base import BaseEstimator
 
 logging.basicConfig(
     filename='logs/pipeline.log',
@@ -16,7 +18,7 @@ import pandas as pd
 from src.data.loader import load_data, train_test_split
 from src.data.preprocess import preprocessing_pipeline, create_labels, filter_rows, DropFeatureSelector
 from src.features.features import feature_engineering_pipeline
-from src.training.training import training_testing_pipeline
+from src.training.training import fine_tune
 from src.evaluation.evaluation import cross_validation
 from src.utils.utils import get_df_from_pipeline
 
@@ -45,20 +47,38 @@ def run_pipeline():
             ("preprocessing", prep_pipeline),
             ("feature_engineering", feat_pipeline),
             ("drop_date", DropFeatureSelector(features_to_drop=["date"])),
-            ("RandomForestClassifier", RandomForestClassifier(random_state=42))
+            ("random_forest", RandomForestClassifier(random_state=42))
         ]
     )
 
-    pipeline.fit(X_train, y_train)
+    hyperparams = {
+        'random_forest__n_estimators': [100, 200, 300],
+        'random_forest__max_depth': [None, 10, 20],
+        'random_forest__min_samples_split': [2, 5, 10],
+        'random_forest__min_samples_leaf': [1, 2, 4]
+    }
+
+    fitted_pipeline : RandomizedSearchCV | GridSearchCV = fine_tune(
+        pipeline=pipeline,
+        tuning_methods=RandomizedSearchCV,
+        years=years,
+        hyperparams=hyperparams,
+        scoring="accuracy",
+        random_state=42
+    )
+
+    fitted_pipeline.fit(X_train, y_train)
 
     cross_val_scores = cross_validation(
-        pipeline=pipeline,
+        pipeline=fitted_pipeline,
         X=X_train,
         y=y_train,
         years=years,
         scoring="accuracy"
     )
 
+    print(fitted_pipeline.best_params_)
+    print(fitted_pipeline.best_score_)
     print(pd.Series(cross_val_scores).describe())
     # pipeline.predict(X_test)
 

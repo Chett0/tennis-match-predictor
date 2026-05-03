@@ -9,7 +9,7 @@ from sklearn.metrics import (
     accuracy_score
 )
 
-from sklearn.model_selection import TimeSeriesSplit, cross_val_score
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, TimeSeriesSplit, cross_val_score
 from sklearn.pipeline import Pipeline
 
 
@@ -34,7 +34,7 @@ def evaluate_model(
 
 
 def cross_validation(
-        pipeline : Pipeline,
+        pipeline : Pipeline | RandomizedSearchCV | GridSearchCV,
         X : pd.DataFrame,
         y : pd.Series,
         years : int,
@@ -47,7 +47,8 @@ def cross_validation(
         X=X, 
         y=y,
         cv=tscv,
-        scoring=scoring
+        scoring=scoring,
+        n_jobs=-1
     )
 
     return scores
