@@ -23,11 +23,11 @@ from src.utils.utils import get_df_from_pipeline
 from src.data.loader import PROCESSED_DATA_PATH, load_data
 
 
-BET_COLS = ["B365W", "B365L", "PSW", "PSL", "MaxW", "MaxL", "AvgW", "AvgL"]
-RANK_COLS = ["WRank", "LRank"]
-POINT_COLS = ["WPts", "LPts"]
-GAME_COLS = ["W1", "L1", "W2", "L2", "W3", "L3", "W4", "L4", "W5", "L5"]
-SETS_COLS = ["Wsets", "Lsets"]
+BET_COLS = ["player1_B365", "player2_B365", "player1_PS", "player2_PS", "player1_Max", "player2_Max", "player1_Avg", "player2_Avg"]
+RANK_COLS = ["player1_Rank", "player2_Rank"]
+POINT_COLS = ["player1_Pts", "player2_Pts"]
+GAME_COLS = ["player1_1", "player2_1", "player1_2", "player2_2", "player1_3", "player2_3", "player1_4", "player2_4", "player1_5", "player2_5"]
+SETS_COLS = ["player1_sets", "player2_sets"]
 
 CAT_COLS = ["Tournament"]
 
@@ -111,11 +111,11 @@ class BestOfImputer(BaseEstimator, TransformerMixin):
         missing_best_of = X["Best of"].isna()
 
         best_of_5 = (
-            (X["W4"] != 0) | (X["W5"] != 0) |
+            (X["player1_4"] != 0) | (X["player2_4"] != 0) |
             (
-                (X["W1"] > X["L1"]) &
-                (X["W2"] > X["L2"]) &
-                (X["W3"] > X["L3"])
+                (X["player1_1"] > X["player2_1"]) &
+                (X["player1_2"] > X["player2_2"]) &
+                (X["player1_3"] > X["player2_3"])
             )
         )
 
@@ -140,6 +140,7 @@ def create_labels(df : pd.DataFrame):
         ["WRank", "LRank"],
         ["WPts", "LPts"],
         ["B365W", "B365L"],
+        ["BFEW", "BFEL"],
         ["PSW", "PSL"],
         ["MaxW", "MaxL"],
         ["AvgW", "AvgL"],
@@ -201,9 +202,9 @@ def preprocessing_pipeline(df : pd.DataFrame) -> Pipeline:
 
     pipeline = Pipeline(
         steps=[
-            ("drop_cols", DropFeatureSelector(["BFEW", "BFEL"])),
+            ("drop_cols", DropFeatureSelector(["player1_BFE", "player2_BFE"])),
             ("remove_walkovers", RowFilter(lambda df: df["Comment"] != "Walkover")),
-            ("valid_sets", RowFilter(lambda df: df["Wsets"].notna() & df["Lsets"].notna())),
+            ("valid_sets", RowFilter(lambda df: df["player1_sets"].notna() & df["player2_sets"].notna())),
             ("preprocessing", preprocessor),
             ("align_types", AlignTypesTransformer()),
             ("best_of_imputer", best_of_imputer)

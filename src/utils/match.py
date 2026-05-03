@@ -18,7 +18,6 @@ class Match:
     lose_streak_diff : int
     court_win_rate_diff : float
     surface_win_rate_diff : float
-    winner : int
 
 class MatchBuilder:
 
@@ -56,10 +55,6 @@ class MatchBuilder:
     
     def add_avg_bet_diff(self, avg_bet_diff : float):
         self.avg_bet_diff : float = avg_bet_diff
-        return self
-    
-    def add_winner(self, winner : int):
-        self.winner : int = winner
         return self
     
     def add_fatigue_diff(self, fatigue_diff : float):
@@ -103,5 +98,4 @@ class MatchBuilder:
             surface_win_rate_diff = self.surface_win_rate_diff,
             win_streak_diff = self.win_streak_diff,
             lose_streak_diff = self.lose_streak_diff,
-            winner = self.winner
         )

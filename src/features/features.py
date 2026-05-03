@@ -49,95 +49,71 @@ class FeatureEngineringTransformer:
         
         for _, row in df.iterrows():
 
-            winner_player_name : str = row["Winner"]
-            loser_player_name : str = row["Loser"]
+            player1_name : str = row["player1"]
+            player2_name : str = row["player2"]
 
-            if winner_player_name not in players:
-                players[winner_player_name] = Player()
-            if loser_player_name not in players:
-                players[loser_player_name] = Player()
-            winner_player : Player = players[winner_player_name]
-            loser_player : Player = players[loser_player_name]
+            if player1_name not in players:
+                players[player1_name] = Player()
+            if player2_name not in players:
+                players[player2_name] = Player()
+            player1 : Player = players[player1_name]
+            player2 : Player = players[player2_name]
 
-            rank_diff = row["WRank"] - row["LRank"]
-            h2h_diff = winner_player.wins[loser_player_name]["matches"] - loser_player.wins[winner_player_name]["matches"]
-            sets_h2h_diff = winner_player.wins[loser_player_name]["sets"] - loser_player.wins[winner_player_name]["sets"]
-            win_rate_diff = winner_player.get_win_rate() - loser_player.get_win_rate()
+            rank_diff = row["player1_Rank"] - row["player2_Rank"]
+            h2h_diff = player1.wins[player2_name]["matches"] - player2.wins[player1_name]["matches"]
+            sets_h2h_diff = player1.wins[player2_name]["sets"] - player2.wins[player1_name]["sets"]
+            win_rate_diff = player1.get_win_rate() - player2.get_win_rate()
             max_games = 39 if row["Best of"] == 3 else 65
-            fatigue_diff = winner_player.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games) - loser_player.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games)
-            last_k_matches_win_rate_diff = winner_player.get_last_k_matches_win_rate() - loser_player.get_last_k_matches_win_rate()
-            win_streak_diff = winner_player.win_streak - loser_player.win_streak
-            lose_streak_diff = winner_player.lose_streak - loser_player.lose_streak
+            fatigue_diff = player1.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games) - player2.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games)
+            last_k_matches_win_rate_diff = player1.get_last_k_matches_win_rate() - player2.get_last_k_matches_win_rate()
+            win_streak_diff = player1.win_streak - player2.win_streak
+            lose_streak_diff = player1.lose_streak - player2.lose_streak
 
-            winner_court_win_rate, winner_surface_win_rate = winner_player.get_court_surface_performance(row["Court"], row["Surface"])
-            loser_court_win_rate, loser_surface_win_rate = loser_player.get_court_surface_performance(row["Court"], row["Surface"])
+            winner_court_win_rate, winner_surface_win_rate = player1.get_court_surface_performance(row["Court"], row["Surface"])
+            loser_court_win_rate, loser_surface_win_rate = player2.get_court_surface_performance(row["Court"], row["Surface"])
             court_win_rate_diff : float = winner_court_win_rate - loser_court_win_rate
             surface_win_rate_diff : float = winner_surface_win_rate - loser_surface_win_rate
 
-            winner_games_won = row["W1"] + row["W2"] + row["W3"] + row["W4"] + row["W5"]
-            loser_games_won = row["L1"] + row["L2"] + row["L3"] + row["L4"] + row["L5"]
+            winner_games_won = row["player1_1"] + row["player1_2"] + row["player1_3"] + row["player1_4"] + row["player1_5"]
+            loser_games_won = row["player2_1"] + row["player2_2"] + row["player2_3"] + row["player2_4"] + row["player2_5"]
             games_played = winner_games_won + loser_games_won
 
             match_builder = MatchBuilder().add_round(row["Round"]).add_series(row["Series"]).add_date(row["Date"])
 
-            if np.random.rand() < 0.5:
-                
-                matches.append(
-                    match_builder
-                    .add_rank_diff(rank_diff)
-                    .add_h2h_diff(h2h_diff)
-                    .add_date(row["Date"])
-                    .add_sets_h2h_diff(sets_h2h_diff)
-                    .add_win_rate_diff(win_rate_diff)
-                    .add_max_bet_diff(row["MaxW"] - row["MaxL"])
-                    .add_avg_bet_diff(row["AvgW"] - row["AvgL"])
-                    .add_fatigue_diff(fatigue_diff)
-                    .add_last_k_matches_win_rate_diff(last_k_matches_win_rate_diff)
-                    .add_court_win_rate_diff(court_win_rate_diff)
-                    .add_surface_win_rate_diff(surface_win_rate_diff)
-                    .add_win_streak_diff(win_streak_diff)
-                    .add_lose_streak_diff(lose_streak_diff)
-                    .add_winner(0)
-                    .build()
-                )
-            
-            else:
+            matches.append(
+                match_builder
+                .add_rank_diff(rank_diff)
+                .add_h2h_diff(h2h_diff)
+                .add_date(row["Date"])
+                .add_sets_h2h_diff(sets_h2h_diff)
+                .add_win_rate_diff(win_rate_diff)
+                .add_max_bet_diff(row["player1_Max"] - row["player2_Max"])
+                .add_avg_bet_diff(row["player1_Avg"] - row["player2_Avg"])
+                .add_fatigue_diff(fatigue_diff)
+                .add_last_k_matches_win_rate_diff(last_k_matches_win_rate_diff)
+                .add_court_win_rate_diff(court_win_rate_diff)
+                .add_surface_win_rate_diff(surface_win_rate_diff)
+                .add_win_streak_diff(win_streak_diff)
+                .add_lose_streak_diff(lose_streak_diff)
+                .build()
+            )
 
-                matches.append(
-                    match_builder
-                    .add_rank_diff(-1 * rank_diff)
-                    .add_h2h_diff(-1 * h2h_diff)
-                    .add_date(row["Date"])
-                    .add_sets_h2h_diff(-1 * sets_h2h_diff)
-                    .add_win_rate_diff(-1 * win_rate_diff)
-                    .add_max_bet_diff(row["MaxL"] - row["MaxW"])
-                    .add_avg_bet_diff(row["AvgL"] - row["AvgW"])
-                    .add_fatigue_diff(-1 * fatigue_diff)
-                    .add_last_k_matches_win_rate_diff(-1 * last_k_matches_win_rate_diff)
-                    .add_court_win_rate_diff(-1 * court_win_rate_diff)
-                    .add_surface_win_rate_diff(-1 * surface_win_rate_diff)
-                    .add_win_streak_diff(-1 * win_streak_diff)
-                    .add_lose_streak_diff(-1 * lose_streak_diff)
-                    .add_winner(1)
-                    .build()
-                )
-
-            winner_player.game_update(
+            player1.game_update(
                 win = True,
-                rival = loser_player_name,
+                rival = player2_name,
                 match_date = row["Date"],
                 court = row["Court"],
                 surface = row["Surface"],
-                sets_won = row["Wsets"],
+                sets_won = row["player1_sets"],
                 games_played = games_played,
             )
-            loser_player.game_update(
+            player2.game_update(
                 win = False,
-                rival = winner_player_name,
+                rival = player1_name,
                 match_date = row["Date"],
                 court = row["Court"],
                 surface = row["Surface"],
-                sets_won = row["Lsets"],
+                sets_won = row["player2_sets"],
                 games_played = games_played,
             )
 
