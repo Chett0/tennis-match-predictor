@@ -1,3 +1,5 @@
+from typing import cast
+
 import pandas as pd
 import numpy as np
 
@@ -11,6 +13,7 @@ from sklearn.metrics import (
 
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, TimeSeriesSplit, cross_val_score
 from sklearn.pipeline import Pipeline
+from sklearn.base import BaseEstimator
 
 
 def evaluate_model(
@@ -52,3 +55,24 @@ def cross_validation(
     )
 
     return scores
+
+
+def feature_importance(
+        pipeline : RandomizedSearchCV | GridSearchCV,
+        pipeline_step_classifier_name : str,
+        pipeline_step_features_name : str,
+):
+    best_estimator = cast(Pipeline, pipeline.best_estimator_)
+    feature_importance = best_estimator.named_steps[
+        pipeline_step_classifier_name
+    ].feature_importances_
+
+    feature_names = best_estimator.named_steps[
+        pipeline_step_features_name
+    ].get_feature_names_out()
+
+
+    return sorted(
+        zip(feature_importance, feature_names),
+        reverse=True
+    )
