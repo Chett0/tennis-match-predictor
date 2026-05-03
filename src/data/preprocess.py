@@ -50,9 +50,14 @@ SERIES_ORDER = [[
 ]]
 
 
-def row_filter(condition, X , y):
-    mask = condition(X)
-    return X[mask], y[mask]
+
+def filter_rows(conditions : list, X : pd.DataFrame, y : pd.Series) -> tuple[pd.DataFrame, pd.Series]:
+    for condition in conditions:
+        mask = condition(X)
+        X = X[mask]
+        y = y[mask]
+    
+    return X, y
 
 def create_labels(df : pd.DataFrame):
 
