@@ -1,7 +1,9 @@
 import argparse
+import copy
 import logging
 
 from sklearn.pipeline import Pipeline
+from sklearn.base import BaseEstimator, TransformerMixin
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +15,7 @@ from src.utils.match import Match, MatchBuilder
 from src.utils.player import Player
 from src.data.loader import PROCESSED_DATA_PATH
 
-class FeatureEngineringTransformer:
+class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
 
     def __init__(self) -> None:
         self.matches : list[Match] = []
@@ -21,9 +23,10 @@ class FeatureEngineringTransformer:
 
     def fit(self, X : pd.DataFrame, y = None):
 
-        self.TOURNAMENT_COLS = [col for col in X.columns if col.startswith("Tournament")]
+        self.tournament_cols_ = [col for col in X.columns if col.startswith("Tournament")]
 
         self.create_features(X, self.players, self.matches)
+        self.n_training_matches_ = len(self.matches)
         
         return self
     
@@ -32,12 +35,12 @@ class FeatureEngineringTransformer:
         if len(self.matches) == len(X):
             matches_df = pd.DataFrame(self.matches)
         else:
-            players_copy = self.players.copy()
+            players_copy = copy.deepcopy(self.players)
             matches_copy = self.matches.copy()
             matches = self.create_features(X, players_copy, matches_copy)
-            matches_df = pd.DataFrame(matches)
+            matches_df = pd.DataFrame(matches[self.n_training_matches_:])
 
-        X = pd.concat([X[self.TOURNAMENT_COLS].reset_index(drop=True), matches_df.reset_index(drop=True)], axis=1)
+        X = pd.concat([X[self.tournament_cols_].reset_index(drop=True), matches_df.reset_index(drop=True)], axis=1)
         return X
     
     def create_features(

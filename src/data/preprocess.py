@@ -58,23 +58,16 @@ class DropFeatureSelector(BaseEstimator, TransformerMixin):
         self.features_to_drop = features_to_drop
 
     def fit(self, X, y=None):
+        self.features_to_drop_ = list(self.features_to_drop)
         return self
 
     def transform(self, X):
-        X.drop(columns=self.features_to_drop, inplace=True)
-        return X
+        return X.drop(columns=self.features_to_drop_, errors="ignore")
     
-class RowFilter(BaseEstimator, TransformerMixin):
-    """Custom transformer to filter rows based on a condition"""
-
-    def __init__(self, condition):
-        self.condition = condition
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X):
-        return X[self.condition(X)]
+def row_filter(condition, X , y):
+    mask = condition(X)
+    return X[mask], y[mask]
+    
 
 
 class AlignTypesTransformer(BaseEstimator, TransformerMixin):
@@ -84,6 +77,7 @@ class AlignTypesTransformer(BaseEstimator, TransformerMixin):
         pass
 
     def fit(self, X, y=None):
+        self.is_fitted_ = True
         return self
 
     def transform(self, X : pd.DataFrame):
@@ -104,6 +98,7 @@ class BestOfImputer(BaseEstimator, TransformerMixin):
         pass
 
     def fit(self, X, y=None):
+        self.is_fitted_ = True
         return self
 
     def transform(self, X):
@@ -180,9 +175,17 @@ def preprocessing_pipeline(df : pd.DataFrame) -> Pipeline:
     point_imputer = SimpleImputer(strategy="constant", fill_value=df[POINT_COLS].min().min())
     best_of_imputer = BestOfImputer()
 
-    categorical_encoder = OneHotEncoder(sparse_output=False)
-    round_encoder = OrdinalEncoder(categories=ROUND_ORDER)
-    series_encoder = OrdinalEncoder(categories=SERIES_ORDER)
+    categorical_encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+    round_encoder = OrdinalEncoder(
+        categories=ROUND_ORDER,
+        handle_unknown="use_encoded_value",
+        unknown_value=-1,
+    )
+    series_encoder = OrdinalEncoder(
+        categories=SERIES_ORDER,
+        handle_unknown="use_encoded_value",
+        unknown_value=-1,
+    )
 
     preprocessor = ColumnTransformer(
         transformers=[
@@ -203,8 +206,6 @@ def preprocessing_pipeline(df : pd.DataFrame) -> Pipeline:
     pipeline = Pipeline(
         steps=[
             ("drop_cols", DropFeatureSelector(["player1_BFE", "player2_BFE"])),
-            ("remove_walkovers", RowFilter(lambda df: df["Comment"] != "Walkover")),
-            ("valid_sets", RowFilter(lambda df: df["player1_sets"].notna() & df["player2_sets"].notna())),
             ("preprocessing", preprocessor),
             ("align_types", AlignTypesTransformer()),
             ("best_of_imputer", best_of_imputer)

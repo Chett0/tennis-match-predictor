@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 import pandas as pd
 
 from src.data.loader import load_data, train_test_split
-from src.data.preprocess import preprocessing_pipeline, create_labels, DropFeatureSelector
+from src.data.preprocess import preprocessing_pipeline, create_labels, row_filter, DropFeatureSelector
 from src.features.features import feature_engineering_pipeline
 from src.training.training import training_testing_pipeline
 from src.utils.utils import get_df_from_pipeline
@@ -28,6 +28,9 @@ def run_pipeline():
     create_labels(df)
 
     X_train, X_test, y_train, y_test = train_test_split(df)
+
+    X_train, y_train = row_filter(lambda df: df["Comment"] != "Walkover", X_train, y_train) # may be used imbalanced learn with FunctionSampler
+    X_train, y_train = row_filter(lambda df: df["player1_sets"].notna() & df["player2_sets"].notna(), X_train, y_train)
 
     prep_pipeline : Pipeline = preprocessing_pipeline(X_train)
 
