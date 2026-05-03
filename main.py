@@ -17,6 +17,7 @@ from src.data.loader import load_data, train_test_split
 from src.data.preprocess import preprocessing_pipeline, create_labels, filter_rows, DropFeatureSelector
 from src.features.features import feature_engineering_pipeline
 from src.training.training import training_testing_pipeline
+from src.evaluation.evaluation import cross_validation
 from src.utils.utils import get_df_from_pipeline
 
 def run_pipeline():
@@ -28,6 +29,7 @@ def run_pipeline():
     create_labels(df)
 
     X_train, X_test, y_train, y_test = train_test_split(df)
+    years = X_train["Date"].dt.year.max() - X_train["Date"].dt.year.min() + 1
 
     X_train, y_train = filter_rows([
             lambda df: df["Comment"] != "Walkover",
@@ -49,10 +51,15 @@ def run_pipeline():
 
     pipeline.fit(X_train, y_train)
 
-    pipeline.predict(X_test)
+    cross_val_scores = cross_validation(
+        pipeline=pipeline,
+        X=X_train,
+        y=y_train,
+        years=years,
+        scoring="accuracy"
+    )
 
-    print(pipeline.score(X_test, y_test))
-
+    print(pd.Series(cross_val_scores).describe())
     # pipeline.predict(X_test)
 
 if __name__ == "__main__":

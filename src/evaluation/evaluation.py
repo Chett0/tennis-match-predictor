@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from sklearn.metrics import (
     confusion_matrix,
@@ -7,6 +8,9 @@ from sklearn.metrics import (
     recall_score,
     accuracy_score
 )
+
+from sklearn.model_selection import TimeSeriesSplit, cross_val_score
+from sklearn.pipeline import Pipeline
 
 
 def evaluate_model(
@@ -27,3 +31,23 @@ def evaluate_model(
     print(f"{recall_score(y_test, y_pred):.2f}")
     print("Confusion Matrix:")
     print(confusion_matrix(y_test, y_pred))
+
+
+def cross_validation(
+        pipeline : Pipeline,
+        X : pd.DataFrame,
+        y : pd.Series,
+        years : int,
+        scoring : str = "accuracy"
+) -> np.ndarray:
+    
+    tscv = TimeSeriesSplit(n_splits=years - 1)
+    scores = cross_val_score(
+        estimator=pipeline,
+        X=X, 
+        y=y,
+        cv=tscv,
+        scoring=scoring
+    )
+
+    return scores
