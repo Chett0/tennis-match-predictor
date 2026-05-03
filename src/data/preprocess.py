@@ -1,5 +1,8 @@
 import argparse
+import builtins
 import logging
+
+import numpy as np
 
 import sklearn
 from sklearn.compose import ColumnTransformer
@@ -124,11 +127,54 @@ class BestOfImputer(BaseEstimator, TransformerMixin):
 
         return X
 
+def create_labels(df : pd.DataFrame):
+
+    swap_mask : np.typing.NDArray[np.bool[builtins.bool]] = np.random.rand(len(df)) < 0.5
+    
+    df['player1'] = np.where(swap_mask, df['Winner'], df['Loser'])
+    df['player2'] = np.where(swap_mask, df['Loser'], df['Winner'])
+
+    df.drop(columns=["Winner", "Loser"], inplace=True, errors="ignore")
+
+    SWAP_COLS = [
+        ["WRank", "LRank"],
+        ["WPts", "LPts"],
+        ["B365W", "B365L"],
+        ["PSW", "PSL"],
+        ["MaxW", "MaxL"],
+        ["AvgW", "AvgL"],
+        ["W1", "L1"],
+        ["W2", "L2"],
+        ["W3", "L3"],
+        ["W4", "L4"],
+        ["W5", "L5"],
+        ["Wsets", "Lsets"]
+    ]
+
+    for cols in SWAP_COLS:
+        for col in cols:
+            if col.startswith("W"):
+                cols.append("player1_" + col[1:])
+            elif col.startswith("L"):
+                cols.append("player2_" + col[1:])
+            elif col.endswith("W"):
+                cols.append("player1_" + col[:-1])
+            elif col.endswith("L"):
+                cols.append("player2_" + col[:-1])
+
+    for col1, col2, new_col1, new_col2 in SWAP_COLS:
+        df[new_col1] = np.where(swap_mask, df[col1], df[col2])
+        df[new_col2] = np.where(swap_mask, df[col2], df[col1])
+
+    df["winner"] = np.where(swap_mask, 0, 1)
+
+    SWAP_COLS = [col for col1, col2, _, _ in SWAP_COLS for col in (col1, col2)]
+    df.drop(columns=SWAP_COLS, inplace=True)
+
 def preprocessing_pipeline(df : pd.DataFrame) -> Pipeline:
 
-    game_imputer = SimpleImputer(strategy="constant", fill_value=0)
-    sets_imputer = SimpleImputer(strategy="constant", fill_value=0)
-    bet_imputer = SimpleImputer(strategy="constant", fill_value=1)
+    zero_imputer = SimpleImputer(strategy="constant", fill_value=0)
+    bet_imputer = SimpleImputer(strategy="constant", fill_value=1.01)
     rank_imputer = SimpleImputer(strategy="constant", fill_value=df[RANK_COLS].max().max())
     point_imputer = SimpleImputer(strategy="constant", fill_value=df[POINT_COLS].min().min())
     best_of_imputer = BestOfImputer()
@@ -139,8 +185,7 @@ def preprocessing_pipeline(df : pd.DataFrame) -> Pipeline:
 
     preprocessor = ColumnTransformer(
         transformers=[
-            ("game_imputer", game_imputer, GAME_COLS),
-            ("sets_imputer", sets_imputer, SETS_COLS),
+            ("zero_imputer", zero_imputer, GAME_COLS + SETS_COLS),
             ("bet_imputer", bet_imputer, BET_COLS),
             ("rank_imputer", rank_imputer, RANK_COLS),
             ("point_imputer", point_imputer, POINT_COLS),
