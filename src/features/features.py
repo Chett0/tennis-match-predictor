@@ -16,20 +16,37 @@ from src.data.loader import PROCESSED_DATA_PATH
 class FeatureEngineringTransformer:
 
     def __init__(self) -> None:
-        pass
+        self.matches : list[Match] = []
+        self.players : dict[str, Player] = {}
 
     def fit(self, X : pd.DataFrame, y = None):
+
+        self.TOURNAMENT_COLS = [col for col in X.columns if col.startswith("Tournament")]
+
+        self.create_features(X, self.players, self.matches)
+        
         return self
     
     def transform(self, X : pd.DataFrame) -> pd.DataFrame:
 
-        df = X.copy()
+        if len(self.matches) == len(X):
+            matches_df = pd.DataFrame(self.matches)
+        else:
+            players_copy = self.players.copy()
+            matches_copy = self.matches.copy()
+            matches = self.create_features(X, players_copy, matches_copy)
+            matches_df = pd.DataFrame(matches)
 
-        TOURNAMENT_COLS = [col for col in df.columns if col.startswith("Tournament")]
+        X = pd.concat([X[self.TOURNAMENT_COLS].reset_index(drop=True), matches_df.reset_index(drop=True)], axis=1)
+        return X
+    
+    def create_features(
+            self, 
+            df : pd.DataFrame, 
+            players : dict[str, Player], 
+            matches : list[Match]
+    ) -> list[Match]:
         
-        matches : list[Match] = [] 
-        players : dict[str, Player] = {}
-
         for _, row in df.iterrows():
 
             winner_player_name : str = row["Winner"]
@@ -42,6 +59,7 @@ class FeatureEngineringTransformer:
             winner_player : Player = players[winner_player_name]
             loser_player : Player = players[loser_player_name]
 
+            rank_diff = row["WRank"] - row["LRank"]
             h2h_diff = winner_player.wins[loser_player_name]["matches"] - loser_player.wins[winner_player_name]["matches"]
             sets_h2h_diff = winner_player.wins[loser_player_name]["sets"] - loser_player.wins[winner_player_name]["sets"]
             win_rate_diff = winner_player.get_win_rate() - loser_player.get_win_rate()
@@ -66,7 +84,7 @@ class FeatureEngineringTransformer:
                 
                 matches.append(
                     match_builder
-                    .add_rank_diff(row["WRank"] - row["LRank"])
+                    .add_rank_diff(rank_diff)
                     .add_h2h_diff(h2h_diff)
                     .add_date(row["Date"])
                     .add_sets_h2h_diff(sets_h2h_diff)
@@ -87,7 +105,7 @@ class FeatureEngineringTransformer:
 
                 matches.append(
                     match_builder
-                    .add_rank_diff(row["LRank"] - row["WRank"])
+                    .add_rank_diff(-1 * rank_diff)
                     .add_h2h_diff(-1 * h2h_diff)
                     .add_date(row["Date"])
                     .add_sets_h2h_diff(-1 * sets_h2h_diff)
@@ -122,13 +140,11 @@ class FeatureEngineringTransformer:
                 sets_won = row["Lsets"],
                 games_played = games_played,
             )
-        
-        matches_df = pd.DataFrame(matches)
-        df = pd.concat([df[TOURNAMENT_COLS].reset_index(drop=True), matches_df.reset_index(drop=True)], axis=1)
-        return df
+
+        return matches
 
 
-def feature_engineering_pipeline(df : pd.DataFrame) -> Pipeline:
+def feature_engineering_pipeline() -> Pipeline:
 
     return Pipeline(
         steps=[
@@ -137,17 +153,17 @@ def feature_engineering_pipeline(df : pd.DataFrame) -> Pipeline:
     )
 
 def save_features(df : pd.DataFrame):
-    df.to_excel(f'{PROCESSED_DATA_PATH}tennis_matches_features.xlsx', index=False)
+    df.to_excel(f'{PROCESSED_DATA_PATH}\\tennis_matches_features.xlsx', index=False)
 
 def read_clean_data() -> pd.DataFrame:
-    return pd.read_excel(f'{PROCESSED_DATA_PATH}tennis_matches_clean.xlsx')
+    return pd.read_excel(f'{PROCESSED_DATA_PATH}\\tennis_matches_clean.xlsx')
 
 def create_features(save_data : bool = False) -> pd.DataFrame:
     
     logger.info("Starting feature engineering pipeline")
 
     df : pd.DataFrame = read_clean_data()
-    pipeline : Pipeline = feature_engineering_pipeline(df)
+    pipeline : Pipeline = feature_engineering_pipeline()
     df = get_df_from_pipeline(pipeline, df)
     if save_data:
         save_features(df)
