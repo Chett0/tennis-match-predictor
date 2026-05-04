@@ -13,27 +13,25 @@ from sklearn.metrics import (
 
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, TimeSeriesSplit, cross_val_score
 from sklearn.pipeline import Pipeline
-from sklearn.base import BaseEstimator
 
 
-def evaluate_model(
+def evaluation_metrics(
         model, 
         X_test : pd.DataFrame, 
         y_test : pd.Series
-):
+) -> dict:
 
     y_pred = model.predict(X_test)
 
-    print("Model Accuracy:")
-    print(f"{accuracy_score(y_test, y_pred):.2f}")
-    print("ROC AUC Score:")
-    print(f"{roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]):.2f}")
-    print("F1 Score:")
-    print(f"{f1_score(y_test, y_pred):.2f}")
-    print("Recall Score:")
-    print(f"{recall_score(y_test, y_pred):.2f}")
-    print("Confusion Matrix:")
-    print(confusion_matrix(y_test, y_pred))
+    metrics = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "roc_auc": roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]),
+        "f1": f1_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "confusion_matrix": confusion_matrix(y_test, y_pred)
+    }
+
+    return metrics
 
 
 def cross_validation(

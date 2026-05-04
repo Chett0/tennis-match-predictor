@@ -19,7 +19,7 @@ from src.data.loader import load_data, train_test_split
 from src.data.preprocess import preprocessing_pipeline, create_labels, filter_rows, DropFeatureSelector
 from src.features.features import feature_engineering_pipeline
 from src.training.training import fine_tune
-from src.evaluation.evaluation import cross_validation
+from src.evaluation.evaluation import cross_validation, evaluation_metrics
 from src.utils.utils import get_df_from_pipeline
 
 def run_pipeline():
@@ -77,10 +77,13 @@ def run_pipeline():
         scoring="accuracy"
     )
 
-    print(fitted_pipeline.best_params_)
-    print(fitted_pipeline.best_score_)
-    print(pd.Series(cross_val_scores).describe())
-    # pipeline.predict(X_test)
+    metrics = evaluation_metrics(
+        model=fitted_pipeline,
+        X_test=X_test,
+        y_test=y_test
+    )
+    
+    print(metrics)
 
 if __name__ == "__main__":
     run_pipeline()

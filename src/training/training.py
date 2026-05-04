@@ -4,8 +4,6 @@ from typing import Type
 from sklearn.inspection import permutation_importance
 from sklearn.pipeline import Pipeline
 
-from src.evaluation.evaluation import evaluate_model
-
 logger = logging.getLogger(__name__)
 
 import pandas as pd
@@ -28,7 +26,7 @@ def fine_tune(
     ) -> RandomizedSearchCV | GridSearchCV:
     """Fine tune a pipeline using specified tuning methods and hyperparameters."""
 
-    tscv = TimeSeriesSplit(n_splits=years - 1)
+    tscv = TimeSeriesSplit(n_splits=years)
     
     if tuning_methods == RandomizedSearchCV:
         fitted_pipeline = RandomizedSearchCV(
