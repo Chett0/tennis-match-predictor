@@ -3,7 +3,6 @@ import logging
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
-from sklearn.base import BaseEstimator
 
 logging.basicConfig(
     filename='logs/pipeline.log',
@@ -18,7 +17,7 @@ import pandas as pd
 from src.data.loader import load_data, train_test_split
 from src.data.preprocess import preprocessing_pipeline, create_labels, filter_rows, DropFeatureSelector
 from src.features.features import feature_engineering_pipeline
-from src.training.training import fine_tune
+from src.training.training import fine_tune, training_pipeline
 from src.evaluation.evaluation import cross_validation, evaluation_metrics
 from src.utils.utils import get_df_from_pipeline
 
@@ -42,20 +41,24 @@ def run_pipeline():
 
     feat_pipeline : Pipeline = feature_engineering_pipeline()
 
+    train_pipeline : Pipeline = training_pipeline(
+        model=RandomForestClassifier(random_state=42)
+    )
+
     pipeline = Pipeline(
         steps=[
             ("preprocessing", prep_pipeline),
             ("feature_engineering", feat_pipeline),
             ("drop_date", DropFeatureSelector(features_to_drop=["date"])),
-            ("random_forest", RandomForestClassifier(random_state=42))
+            ("train", train_pipeline)
         ]
     )
 
     hyperparams = {
-        'random_forest__n_estimators': [100, 200, 300],
-        'random_forest__max_depth': [None, 10, 20],
-        'random_forest__min_samples_split': [2, 5, 10],
-        'random_forest__min_samples_leaf': [1, 2, 4]
+        'train__model__n_estimators': [100, 200, 300],
+        'train__model__max_depth': [None, 10, 20],
+        'train__model__min_samples_split': [2, 5, 10],
+        'train__model__min_samples_leaf': [1, 2, 4]
     }
 
     fitted_pipeline : RandomizedSearchCV | GridSearchCV = fine_tune(
@@ -77,12 +80,14 @@ def run_pipeline():
         scoring="accuracy"
     )
 
+    print(cross_val_scores)
+
     metrics = evaluation_metrics(
         model=fitted_pipeline,
         X_test=X_test,
         y_test=y_test
     )
-    
+
     print(metrics)
 
 if __name__ == "__main__":

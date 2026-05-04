@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 import pandas as pd
 from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, RandomizedSearchCV
 from sklearn.model_selection._search import BaseSearchCV
+from sklearn.base import BaseEstimator
 
 from src.data.loader import PROCESSED_DATA_PATH, train_test_split
 
@@ -58,18 +59,15 @@ def fine_tune(
 def read_processed_data() -> pd.DataFrame:
     return pd.read_excel(f'{PROCESSED_DATA_PATH}tennis_matches_features.xlsx')
 
-def training_testing_pipeline(df : pd.DataFrame):
-
-    logger.info("Starting training pipeline")
-
-
+def training_pipeline(
+        model : BaseEstimator
+) -> Pipeline:
     
-    logger.info("Training pipeline completed")
+    return Pipeline(
+        steps=[
+            ("model", model)
+        ]
+    )
 
-    return model
-
-if __name__ == "__main__":
-    df = read_processed_data()
-    model = training_testing_pipeline(df)
     
     
