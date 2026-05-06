@@ -18,10 +18,9 @@ from sklearn.pipeline import Pipeline
 def evaluation_metrics(
         model, 
         X_test : pd.DataFrame, 
-        y_test : pd.Series
+        y_test : pd.Series,
+        y_pred : np.ndarray
 ) -> dict:
-
-    y_pred = model.predict(X_test)
 
     metrics = {
         "accuracy": accuracy_score(y_test, y_pred),

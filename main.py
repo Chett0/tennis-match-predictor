@@ -18,7 +18,8 @@ from src.data.loader import load_data, train_test_split
 from src.data.preprocess import preprocessing_pipeline, create_labels, filter_rows, DropFeatureSelector
 from src.features.features import feature_engineering_pipeline
 from src.training.training import fine_tune, training_pipeline
-from src.evaluation.evaluation import cross_validation, evaluation_metrics
+from src.evaluation.metrics import cross_validation, evaluation_metrics
+from src.evaluation.plots import plot_confusion_matrix, plot_roc_curve
 from src.utils.utils import get_df_from_pipeline
 
 def run_pipeline():
@@ -80,15 +81,26 @@ def run_pipeline():
         scoring="accuracy"
     )
 
-    print(cross_val_scores)
+    print(pd.Series(cross_val_scores).describe())
+
+    y_pred = fitted_pipeline.predict(X_test)
 
     metrics = evaluation_metrics(
+        model=fitted_pipeline,
+        X_test=X_test,
+        y_test=y_test,
+        y_pred=y_pred
+    )
+
+    print(metrics)
+
+    plot_confusion_matrix(cm=metrics["confusion_matrix"])
+    plot_roc_curve(
         model=fitted_pipeline,
         X_test=X_test,
         y_test=y_test
     )
 
-    print(metrics)
 
 if __name__ == "__main__":
     run_pipeline()
