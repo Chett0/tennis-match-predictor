@@ -1,0 +1,33 @@
+# Version control
+.git
+.gitignore
+
+# Python caches / build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Notebooks (not needed to run the pipeline)
+notebooks/
+
+# Local data & generated outputs
+data/processed/
+data/features.txt
+models/
+logs/
+
+# Docker
+Dockerfile
+.dockerignore
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
