@@ -23,25 +23,17 @@ from src.evaluation.plots import plot_confusion_matrix, plot_roc_curve
 from src.utils.utils import get_df_from_pipeline
 
 def run_pipeline():
-
+    """Run the entire machine learning pipeline"""
     logger.info("Starting pipeline execution")
 
     df : pd.DataFrame = load_data()
-
     create_labels(df)
 
     X_train, X_test, y_train, y_test = train_test_split(df)
     years = X_train["Date"].dt.year.max() - X_train["Date"].dt.year.min() + 1
 
-    X_train, y_train = filter_rows([
-            lambda df: df["Comment"] != "Walkover",
-            lambda df: df["player1_sets"].notna() & df["player2_sets"].notna()
-        ], X_train, y_train)
-
-    prep_pipeline : Pipeline = preprocessing_pipeline(X_train)
-
+    prep_pipeline : Pipeline = preprocessing_pipeline(X_train, y_train)
     feat_pipeline : Pipeline = feature_engineering_pipeline()
-
     train_pipeline : Pipeline = training_pipeline(
         model=RandomForestClassifier(random_state=42)
     )

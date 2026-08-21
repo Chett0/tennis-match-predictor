@@ -17,99 +17,88 @@ logger = logging.getLogger(__name__)
 import pandas as pd
 import numpy as np
 
-from src.utils.utils import get_df_from_pipeline
-from src.data.loader import PROCESSED_DATA_PATH, load_data
-from src.data.transformers import DropFeatureSelector, AlignTypesTransformer, BestOfImputer
+from src.utils.utils import (
+    get_df_from_pipeline,
+    GAME_COLS,
+    POINT_COLS,
+    BET_COLS,
+    RANK_COLS,
+    CAT_COLS,
+    SETS_COLS,
+    swap_cols,
+    ROUND_ORDER,
+    SERIES_ORDER
+)
+from src.data.loader import PROCESSED_DATA_PATH, load_data, train_test_split
+from src.data.transformers import DropFeatureSelector, AlignTypesTransformer, BestOfImputer #, OutliersTransformer
 
 
-BET_COLS = ["player1_B365", "player2_B365", "player1_PS", "player2_PS", "player1_Max", "player2_Max", "player1_Avg", "player2_Avg"]
-RANK_COLS = ["player1_Rank", "player2_Rank"]
-POINT_COLS = ["player1_Pts", "player2_Pts"]
-GAME_COLS = ["player1_1", "player2_1", "player1_2", "player2_2", "player1_3", "player2_3", "player1_4", "player2_4", "player1_5", "player2_5"]
-SETS_COLS = ["player1_sets", "player2_sets"]
+def filter_rows(
+        conditions : list,
+        X : pd.DataFrame,
+        y : pd.Series
+    ) -> None:
+    """Filter rows in the DataFrame based on a list of conditions.
 
-CAT_COLS = ["Tournament"]
-
-ROUND_ORDER = [[
-    "Round Robin",
-    "1st Round",
-    "2nd Round",
-    "3rd Round",
-    "4th Round",
-    "Quarterfinals",
-    "Semifinals",
-    "The Final"
-]]
-
-SERIES_ORDER = [[
-    "ATP250",
-    "ATP500",
-    "Masters 1000",
-    "Masters Cup",
-    "Grand Slam"
-]]
-
-
-
-def filter_rows(conditions : list, X : pd.DataFrame, y : pd.Series) -> tuple[pd.DataFrame, pd.Series]:
+    Args:
+        conditions: a list of functions that take a DataFrame and return a boolean mask
+        X: the DataFrame to filter
+        y: the target Series to filter"""
+    mask = pd.Series(True, index=X.index)
     for condition in conditions:
-        mask = condition(X)
-        X = X[mask]
-        y = y[mask]
-    
-    return X, y
+        mask &= condition(X)
 
-def create_labels(df : pd.DataFrame):
+    drop_index = X.index[~mask]
+    X.drop(index=drop_index, inplace=True)
+    y.drop(index=drop_index, inplace=True)
 
-    swap_mask : np.typing.NDArray[np.bool[builtins.bool]] = np.random.rand(len(df)) < 0.5
-    
+
+def create_labels(df : pd.DataFrame, random_state : int | None = 42):
+    """Randomize winner/loser positions into player1/player2 and build the target.
+
+    Args:
+        df: raw DataFrame with ``Winner``/``Loser`` columns and the winner/loser stat columns.
+        random_state: seed for the winner/loser swap, so the labels are reproducible
+            across runs. Pass ``None`` for a different assignment every time.
+    """
+    rng = np.random.default_rng(random_state)
+    swap_mask : np.typing.NDArray[np.bool[builtins.bool]] = rng.random(len(df)) < 0.5
     df['player1'] = np.where(swap_mask, df['Winner'], df['Loser'])
     df['player2'] = np.where(swap_mask, df['Loser'], df['Winner'])
 
+    # identifier column, not a feature: the sequential player statistics need to know who
+    # won each past match, and the score cannot be trusted for retirements/walkovers.
+    # It will be dropped in FeatureEngineringTransformer.
+    df['match_winner'] = df['Winner']
     df.drop(columns=["Winner", "Loser"], inplace=True, errors="ignore")
 
-    SWAP_COLS = [
-        ["WRank", "LRank"],
-        ["WPts", "LPts"],
-        ["B365W", "B365L"],
-        ["BFEW", "BFEL"],
-        ["PSW", "PSL"],
-        ["MaxW", "MaxL"],
-        ["AvgW", "AvgL"],
-        ["W1", "L1"],
-        ["W2", "L2"],
-        ["W3", "L3"],
-        ["W4", "L4"],
-        ["W5", "L5"],
-        ["Wsets", "Lsets"]
-    ]
+    for col1, col2 in swap_cols:
+        new_col1, new_col2 = None, None
+        if col1.startswith("W"):
+            new_col1, new_col2 = "player1_" + col1[1:], "player2_" + col2[1:]
+        elif col1.endswith("W"):
+            new_col1, new_col2 = "player1_" + col1[:-1], "player2_" + col2[:-1]
 
-    for cols in SWAP_COLS:
-        for col in cols:
-            if col.startswith("W"):
-                cols.append("player1_" + col[1:])
-            elif col.startswith("L"):
-                cols.append("player2_" + col[1:])
-            elif col.endswith("W"):
-                cols.append("player1_" + col[:-1])
-            elif col.endswith("L"):
-                cols.append("player2_" + col[:-1])
+        if new_col1 and new_col2:
+            df[new_col1] = np.where(swap_mask, df[col1], df[col2])
+            df[new_col2] = np.where(swap_mask, df[col2], df[col1])
 
-    for col1, col2, new_col1, new_col2 in SWAP_COLS:
-        df[new_col1] = np.where(swap_mask, df[col1], df[col2])
-        df[new_col2] = np.where(swap_mask, df[col2], df[col1])
+    df["winner"] = np.where(swap_mask, 1, 0)
 
-    df["winner"] = np.where(swap_mask, 0, 1)
+    drop_cols = [col for pair in swap_cols for col in pair]
+    df.drop(columns=drop_cols, inplace=True)
 
-    SWAP_COLS = [col for col1, col2, _, _ in SWAP_COLS for col in (col1, col2)]
-    df.drop(columns=SWAP_COLS, inplace=True)
 
-def preprocessing_pipeline(df : pd.DataFrame) -> Pipeline:
+def preprocessing_pipeline(X : pd.DataFrame, y : pd.Series) -> Pipeline:
+    filter_rows([
+        lambda X: X["Comment"] != "Walkover",
+        lambda X: X["player1_sets"].notna() & X["player2_sets"].notna()
+    ], X, y)
 
     zero_imputer = SimpleImputer(strategy="constant", fill_value=0)
     bet_imputer = SimpleImputer(strategy="constant", fill_value=1.01)
-    rank_imputer = SimpleImputer(strategy="constant", fill_value=df[RANK_COLS].max().max())
-    point_imputer = SimpleImputer(strategy="constant", fill_value=df[POINT_COLS].min().min())
+    rank_imputer = SimpleImputer(strategy="constant", fill_value=X[RANK_COLS].max().max())
+    point_imputer = SimpleImputer(strategy="constant", fill_value=X[POINT_COLS].min().min())
     best_of_imputer = BestOfImputer()
 
     categorical_encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
@@ -142,27 +131,29 @@ def preprocessing_pipeline(df : pd.DataFrame) -> Pipeline:
 
     pipeline = Pipeline(
         steps=[
-            ("drop_cols", DropFeatureSelector(["player1_BFE", "player2_BFE"])),
-            ("preprocessing", preprocessor),
+            ("drop_cols", DropFeatureSelector(features_to_drop=["player1_BFE", "player2_BFE"])),
             ("align_types", AlignTypesTransformer()),
-            ("best_of_imputer", best_of_imputer)
+            ("preprocessing", preprocessor),
+            # ("align_types", AlignTypesTransformer()),
+            ("best_of_imputer", best_of_imputer),
+            # ("outliers", OutliersTransformer())
         ],
-
     )
 
     return pipeline
 
 
 def save_clean_data(df : pd.DataFrame):
-    df.to_excel(f'{PROCESSED_DATA_PATH}tennis_matches_clean.xlsx', index=False)
+    df.to_excel(PROCESSED_DATA_PATH / "tennis_matches_clean.xlsx", index=False)
 
 def clean_data(save_data : bool = False):
-
     logger.info("Starting preprocessing pipeline")
 
     df : pd.DataFrame = load_data()
-    pipeline = preprocessing_pipeline(df)
-    df = get_df_from_pipeline(pipeline, df)
+    create_labels(df)
+    X_train, _, y_train, _ = train_test_split(df)
+    pipeline = preprocessing_pipeline(X_train, y_train)
+    X_train = get_df_from_pipeline(pipeline, X_train)
     if save_data:
         save_clean_data(df)
 
@@ -171,9 +162,7 @@ def clean_data(save_data : bool = False):
     return df
 
 if __name__ == "__main__":
-    
     parser = argparse.ArgumentParser()
-
     parser.add_argument(
         "--save",
         action="store_true",
@@ -181,5 +170,4 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
     clean_data(save_data=args.save)
