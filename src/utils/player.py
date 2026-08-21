@@ -33,12 +33,13 @@ class Player:
             sets_won : int = 0,
             games_played : int = 0,
         ):
+        """Update player stats with game information"""
+
         self.last_match = {
             "date" : match_date,
             "games_played" : games_played
         }
         self.num_games += 1
-        self.last_k_matches.append(1 if win else 0)
 
         if win:
             self.num_wins += 1
@@ -46,9 +47,12 @@ class Player:
             self.wins[rival]["sets"] += sets_won
             self.win_streak += 1
             self.lose_streak = 0
+            self.last_k_matches.append(1)
         else:
             self.win_streak = 0
             self.lose_streak += 1
+            self.last_k_matches.append(0)
+
         self.court_performance[court]["games"] += 1
         self.surface_performance[surface]["games"] += 1
         if win:
@@ -56,12 +60,15 @@ class Player:
             self.surface_performance[surface]["wins"] += 1
 
 
+    def get_weighted_ranking(self, current_ranking : int) -> float:
+        return current_ranking**(1.5)
+
 
     def get_win_rate(self) -> float :
         return self.num_wins / self.num_games if self.num_games > 0 else 0.5
+
     
     def get_fatigue(self, match_date : datetime, long_stop_days : int = 15, max_games : int = 39) -> float:
-
         if self.last_match is None:
             return 1
         
@@ -75,22 +82,33 @@ class Player:
             return long_stop_days / days_since_last_match
         else:
             return (last_match_games / max_games) / days_since_last_match
-        
+
+    
     def get_last_k_matches_win_rate(self) -> float:
         if not self.last_k_matches:
             return 0.5
         return sum(self.last_k_matches) / len(self.last_k_matches)
+
     
-    def get_court_surface_performance(
+    def get_court_performance(
             self, 
-            court : str,
-            surface : str
-        ) -> tuple[float, float]:
+            court : str
+        ) -> float:
+        "Return the win rate of the player on a specific court if any games are played, otherwise 0.5"
+
         court_performance : dict[str, int] = self.court_performance[court]
-        surface_performance : dict[str, int] = self.surface_performance[surface]
-
         court_win_rate = court_performance["wins"] / court_performance["games"] if court_performance["games"] > 0 else 0.5
-        surface_win_rate = surface_performance["wins"] / surface_performance["games"] if surface_performance["games"] > 0 else 0.5
+        return court_win_rate
 
-        return court_win_rate, surface_win_rate
+
+    def get_surface_performance(
+            self,
+            surface : str,
+    ) -> float:
+        
+        "Return the win rate of the player on a specific surface if any games are played, otherwise 0.5"
+        surface_performance : dict[str, int] = self.surface_performance[surface]
+        surface_win_rate = surface_performance["wins"] / surface_performance["games"] if surface_performance["games"] > 0 else 0.5
+        return surface_win_rate
+
 

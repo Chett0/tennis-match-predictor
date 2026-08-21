@@ -57,7 +57,7 @@ def fine_tune(
 
 
 def read_processed_data() -> pd.DataFrame:
-    return pd.read_excel(f'{PROCESSED_DATA_PATH}tennis_matches_features.xlsx')
+    return pd.read_excel(PROCESSED_DATA_PATH / "tennis_matches_features.xlsx")
 
 def training_pipeline(
         model : BaseEstimator

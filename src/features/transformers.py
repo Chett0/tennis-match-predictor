@@ -9,30 +9,31 @@ from src.utils.player import Player
 class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
 
     def __init__(self) -> None:
-        self.matches : list[Match] = []
-        self.players : dict[str, Player] = {}
+        pass
 
     def fit(self, X : pd.DataFrame, y = None):
-
+        # cols of ohe of tournament
         self.tournament_cols_ = [col for col in X.columns if col.startswith("Tournament")]
-
-        self.create_features(X, self.players, self.matches)
-        self.n_training_matches_ = len(self.matches)
-        
+        self.players_ : dict[str, Player] = {}
+        self.matches_ : list[Match] = []
+        self.create_features(X, self.players_, self.matches_)
+        self.n_training_matches_ = len(self.matches_)
+        self.train_index_ = X.index
         return self
-    
-    def transform(self, X : pd.DataFrame) -> pd.DataFrame:
 
-        if len(self.matches) == len(X):
-            matches_df = pd.DataFrame(self.matches)
+
+    def transform(self, X : pd.DataFrame) -> pd.DataFrame:
+        if X.index.equals(self.train_index_):
+            matches_df = pd.DataFrame(self.matches_)
         else:
-            players_copy = copy.deepcopy(self.players)
-            matches_copy = self.matches.copy()
+            players_copy = copy.deepcopy(self.players_)
+            matches_copy = self.matches_.copy()
             matches = self.create_features(X, players_copy, matches_copy)
             matches_df = pd.DataFrame(matches[self.n_training_matches_:])
 
         X = pd.concat([X[self.tournament_cols_].reset_index(drop=True), matches_df.reset_index(drop=True)], axis=1)
         return X
+
     
     def create_features(
             self, 
@@ -42,7 +43,6 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
     ) -> list[Match]:
         
         for _, row in df.iterrows():
-
             player1_name : str = row["player1"]
             player2_name : str = row["player2"]
 
@@ -57,22 +57,24 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
             h2h_diff = player1.wins[player2_name]["matches"] - player2.wins[player1_name]["matches"]
             sets_h2h_diff = player1.wins[player2_name]["sets"] - player2.wins[player1_name]["sets"]
             win_rate_diff = player1.get_win_rate() - player2.get_win_rate()
+
             max_games = 39 if row["Best of"] == 3 else 65
             fatigue_diff = player1.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games) - player2.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games)
             last_k_matches_win_rate_diff = player1.get_last_k_matches_win_rate() - player2.get_last_k_matches_win_rate()
             win_streak_diff = player1.win_streak - player2.win_streak
             lose_streak_diff = player1.lose_streak - player2.lose_streak
 
-            winner_court_win_rate, winner_surface_win_rate = player1.get_court_surface_performance(row["Court"], row["Surface"])
-            loser_court_win_rate, loser_surface_win_rate = player2.get_court_surface_performance(row["Court"], row["Surface"])
-            court_win_rate_diff : float = winner_court_win_rate - loser_court_win_rate
-            surface_win_rate_diff : float = winner_surface_win_rate - loser_surface_win_rate
+            court_win_rate_diff : float = player1.get_court_performance(row["Court"]) - player2.get_court_performance(row["Court"])
+            surface_win_rate_diff : float = player1.get_surface_performance(row["Surface"]) - player2.get_surface_performance(row["Surface"])
 
-            winner_games_won = row["player1_1"] + row["player1_2"] + row["player1_3"] + row["player1_4"] + row["player1_5"]
-            loser_games_won = row["player2_1"] + row["player2_2"] + row["player2_3"] + row["player2_4"] + row["player2_5"]
-            games_played = winner_games_won + loser_games_won
+            player1_games_won = row["player1_1"] + row["player1_2"] + row["player1_3"] + row["player1_4"] + row["player1_5"]
+            player2_games_won = row["player2_1"] + row["player2_2"] + row["player2_3"] + row["player2_4"] + row["player2_5"]
+            games_played = player1_games_won + player2_games_won
 
-            match_builder = MatchBuilder().add_round(row["Round"]).add_series(row["Series"]).add_date(row["Date"])
+            match_builder = MatchBuilder() \
+                                .add_round(row["Round"]) \
+                                .add_series(row["Series"]) \
+                                .add_date(row["Date"]) 
 
             matches.append(
                 match_builder
@@ -91,9 +93,10 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
                 .add_lose_streak_diff(lose_streak_diff)
                 .build()
             )
-
+            
+            player1_won : bool = player1_name == row["match_winner"]
             player1.game_update(
-                win = True,
+                win = player1_won,
                 rival = player2_name,
                 match_date = row["Date"],
                 court = row["Court"],
@@ -102,7 +105,7 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
                 games_played = games_played,
             )
             player2.game_update(
-                win = False,
+                win = not player1_won,
                 rival = player1_name,
                 match_date = row["Date"],
                 court = row["Court"],
