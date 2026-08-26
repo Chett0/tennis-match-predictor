@@ -1,5 +1,9 @@
+from typing import Tuple, cast
+
 import pandas as pd
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
+from sklearn.base import BaseEstimator
 
 GAME_COLS = [
     "player1_1", 
@@ -18,6 +22,11 @@ POINT_COLS = ["player1_Pts", "player2_Pts"]
 RANK_COLS = ["player1_Rank", "player2_Rank"]
 SETS_COLS = ["player1_sets", "player2_sets"]
 CAT_COLS = ["Tournament"]
+
+# Typo in the raw files, mapped to the value they were meant to be
+COMMENT_TYPOS = {"Rrtired": "Retired"}
+
+COMMENT_ROW_DROP = ["Awarded", "Walkover", "Disqualified"]
 
 BET_COLS = [
     "player1_B365", 
@@ -71,3 +80,11 @@ def get_df_from_pipeline(pipeline : Pipeline, df : pd.DataFrame):
     return pd.DataFrame(df_)
 
 
+def get_best_estimator(
+        pipeline : RandomizedSearchCV | GridSearchCV, 
+        model_step : str = "train"
+    ) -> Tuple[BaseEstimator, Pipeline]:
+
+    best = cast(Pipeline, pipeline.best_estimator_)
+    model = best.named_steps[model_step].named_steps["model"]
+    return model, best

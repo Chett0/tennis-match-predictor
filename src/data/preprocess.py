@@ -18,6 +18,7 @@ import pandas as pd
 import numpy as np
 
 from src.utils.utils import (
+    COMMENT_ROW_DROP,
     get_df_from_pipeline,
     GAME_COLS,
     POINT_COLS,
@@ -25,12 +26,13 @@ from src.utils.utils import (
     RANK_COLS,
     CAT_COLS,
     SETS_COLS,
+    COMMENT_TYPOS,
     swap_cols,
     ROUND_ORDER,
     SERIES_ORDER
 )
 from src.data.loader import PROCESSED_DATA_PATH, load_data, train_test_split
-from src.data.transformers import DropFeatureSelector, AlignTypesTransformer, BestOfImputer #, OutliersTransformer
+from src.data.transformers import DropFeatureSelector, AlignTypesTransformer, ReplaceValuesTransformer, BestOfImputer #, OutliersTransformer
 
 
 def filter_rows(
@@ -66,11 +68,10 @@ def create_labels(df : pd.DataFrame, random_state : int | None = 42):
     df['player1'] = np.where(swap_mask, df['Winner'], df['Loser'])
     df['player2'] = np.where(swap_mask, df['Loser'], df['Winner'])
 
-    # identifier column, not a feature: the sequential player statistics need to know who
+    # Winner will be an identifier column, not a feature: the sequential player statistics need to know who
     # won each past match, and the score cannot be trusted for retirements/walkovers.
     # It will be dropped in FeatureEngineringTransformer.
-    df['match_winner'] = df['Winner']
-    df.drop(columns=["Winner", "Loser"], inplace=True, errors="ignore")
+    df.drop(columns=["Loser"], inplace=True, errors="ignore")
 
     for col1, col2 in swap_cols:
         new_col1, new_col2 = None, None
@@ -90,8 +91,9 @@ def create_labels(df : pd.DataFrame, random_state : int | None = 42):
 
 
 def preprocessing_pipeline(X : pd.DataFrame, y : pd.Series) -> Pipeline:
+
     filter_rows([
-        lambda X: X["Comment"] != "Walkover",
+        lambda X: ~X["Comment"].isin(COMMENT_ROW_DROP),
         lambda X: X["player1_sets"].notna() & X["player2_sets"].notna()
     ], X, y)
 
@@ -131,12 +133,12 @@ def preprocessing_pipeline(X : pd.DataFrame, y : pd.Series) -> Pipeline:
 
     pipeline = Pipeline(
         steps=[
+            ("fix_typos", ReplaceValuesTransformer(column="Comment", replacements=COMMENT_TYPOS)),
             ("drop_cols", DropFeatureSelector(features_to_drop=["player1_BFE", "player2_BFE"])),
             ("align_types", AlignTypesTransformer()),
             ("preprocessing", preprocessor),
             # ("align_types", AlignTypesTransformer()),
             ("best_of_imputer", best_of_imputer),
-            # ("outliers", OutliersTransformer())
         ],
     )
 

@@ -10,11 +10,20 @@ from src.utils.utils import GAME_COLS
 class DropFeatureSelector(BaseEstimator, TransformerMixin):
     """Custom transformer to drop specified features"""
 
-    def __init__(self, features_to_drop: list[str]):
+    def __init__(self, features_to_drop: list[str], is_grouped: bool = False):
         self.features_to_drop = features_to_drop
+        self.is_grouped = is_grouped
 
     def fit(self, X, y=None):
-        self.features_to_drop_ = list(self.features_to_drop)
+        if self.is_grouped:
+            self.features_to_drop_ = [
+                col
+                for feature in self.features_to_drop
+                for col in X.columns
+                if col.startswith(feature)
+            ]
+        else:
+            self.features_to_drop_ = list(self.features_to_drop)
         return self
 
     def transform(self, X):
@@ -38,14 +47,31 @@ class AlignTypesTransformer(BaseEstimator, TransformerMixin):
         ]
 
         # game columns are considered as object
-        for col in GAME_COLS:
-            if col in X.columns:
-                X[col] = pd.to_numeric(X[col], errors='coerce')
-                cols.append(col)
+        # for col in GAME_COLS:
+        #     if col in X.columns and col not in cols:
+        #         X[col] = pd.to_numeric(X[col], errors='coerce')
+        #         cols.append(col)
 
         X[cols] = X[cols].astype("Int64")
         return X
     
+
+class ReplaceValuesTransformer(BaseEstimator, TransformerMixin):
+    """Custom transformer to replace known wrong values in a column with their canonical version"""
+
+    def __init__(self, column : str, replacements : dict[str, str]):
+        self.column = column
+        self.replacements = replacements
+
+    def fit(self, X, y=None):
+        self.is_fitted_ = True
+        return self
+
+    def transform(self, X):
+        X = X.copy()
+        X[self.column] = X[self.column].replace(self.replacements)
+        return X
+
 
 class BestOfImputer(BaseEstimator, TransformerMixin):
     """Custom transformer to impute missing values in the 'Best of' column"""

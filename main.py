@@ -1,5 +1,7 @@
 import logging
 
+import xgboost as xgb
+
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
@@ -18,7 +20,7 @@ from src.data.loader import load_data, train_test_split
 from src.data.preprocess import preprocessing_pipeline, create_labels, filter_rows, DropFeatureSelector
 from src.features.features import feature_engineering_pipeline
 from src.training.training import fine_tune, training_pipeline
-from src.evaluation.metrics import cross_validation, evaluation_metrics
+from src.evaluation.metrics import cross_validation, evaluation_metrics, print_metrics
 from src.evaluation.plots import plot_confusion_matrix, plot_roc_curve
 from src.utils.utils import get_df_from_pipeline
 
@@ -27,6 +29,7 @@ def run_pipeline():
     logger.info("Starting pipeline execution")
 
     df : pd.DataFrame = load_data()
+    df = df[df["WRank"] <= 100]
     create_labels(df)
 
     X_train, X_test, y_train, y_test = train_test_split(df)
@@ -35,23 +38,27 @@ def run_pipeline():
     prep_pipeline : Pipeline = preprocessing_pipeline(X_train, y_train)
     feat_pipeline : Pipeline = feature_engineering_pipeline()
     train_pipeline : Pipeline = training_pipeline(
-        model=RandomForestClassifier(random_state=42)
+        model=xgb.XGBClassifier()
     )
 
     pipeline = Pipeline(
         steps=[
             ("preprocessing", prep_pipeline),
             ("feature_engineering", feat_pipeline),
-            ("drop_date", DropFeatureSelector(features_to_drop=["date"])),
+            # ("drop_date", DropFeatureSelector(features_to_drop=["date"])),
             ("train", train_pipeline)
         ]
     )
 
     hyperparams = {
-        'train__model__n_estimators': [100, 200, 300],
-        'train__model__max_depth': [None, 10, 20],
-        'train__model__min_samples_split': [2, 5, 10],
-        'train__model__min_samples_leaf': [1, 2, 4]
+        'train__model__n_estimators': [100, 300, 500],
+        'train__model__max_depth': [3, 6, 10],
+        'train__model__learning_rate': [0.01, 0.05, 0.1],
+        'train__model__subsample': [0.6, 0.8, 1.0],
+        'train__model__colsample_bytree': [0.6, 0.8, 1.0],
+        'train__model__min_child_weight': [1, 3, 5],
+        'train__model__gamma': [0, 0.1, 0.3],
+        'train__model__reg_lambda': [1, 5, 10]
     }
 
     fitted_pipeline : RandomizedSearchCV | GridSearchCV = fine_tune(
@@ -84,7 +91,7 @@ def run_pipeline():
         y_pred=y_pred
     )
 
-    print(metrics)
+    print_metrics(metrics)
 
     plot_confusion_matrix(cm=metrics["confusion_matrix"])
     plot_roc_curve(

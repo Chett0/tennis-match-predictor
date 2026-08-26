@@ -10,8 +10,12 @@ from sklearn.metrics import (
     recall_score,
     accuracy_score
 )
-
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, TimeSeriesSplit, cross_val_score
+from sklearn.model_selection import (
+    GridSearchCV, 
+    RandomizedSearchCV, 
+    TimeSeriesSplit, 
+    cross_val_score
+)
 from sklearn.pipeline import Pipeline
 
 
@@ -34,10 +38,11 @@ def evaluation_metrics(
 
 
 def cross_validation(
-        pipeline : Pipeline | RandomizedSearchCV | GridSearchCV,
+        pipeline :  RandomizedSearchCV | GridSearchCV,
         X : pd.DataFrame,
         y : pd.Series,
         years : int,
+        verbose : int = 0,
         scoring : str = "accuracy"
 ) -> np.ndarray:
     
@@ -48,7 +53,8 @@ def cross_validation(
         y=y,
         cv=tscv,
         scoring=scoring,
-        n_jobs=-1
+        n_jobs=-1,
+        verbose=verbose
     )
 
     return scores
@@ -56,20 +62,37 @@ def cross_validation(
 
 def feature_importance(
         pipeline : RandomizedSearchCV | GridSearchCV,
-        pipeline_step_classifier_name : str,
-        pipeline_step_features_name : str,
-):
-    best_estimator = cast(Pipeline, pipeline.best_estimator_)
-    feature_importance = best_estimator.named_steps[
-        pipeline_step_classifier_name
-    ].feature_importances_
+        X : pd.DataFrame,
+        model_step : str = "train",
+) -> pd.DataFrame:
 
-    feature_names = best_estimator.named_steps[
-        pipeline_step_features_name
-    ].get_feature_names_out()
+    best = cast(Pipeline, pipeline.best_estimator_)
+    model = best.named_steps[model_step].named_steps["model"]
 
+    transformers = best[:-1]
+    names = transformers.transform(X).columns
 
-    return sorted(
-        zip(feature_importance, feature_names),
-        reverse=True
+    importances = pd.DataFrame(
+        {"importance": model.feature_importances_},
+        index=names
     )
+
+    importances.sort_values(by="importance", ascending=False, inplace=True)
+    return importances
+
+
+def print_metrics(metrics : dict) -> None:
+    """Pretty-print the evaluation metrics dictionary.
+
+    Args:
+        metrics: mapping from metric name to its value, as returned by ``evaluation_metrics``.
+    """
+    for name, value in metrics.items():
+        print(f"\n{name.replace('_', ' ').title()}:")
+
+        if name == "confusion_matrix":
+            print(pd.DataFrame(value))
+        elif isinstance(value, (float, np.floating)):
+            print(f"{value:.4f}")
+        else:
+            print(value)

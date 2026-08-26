@@ -1,7 +1,7 @@
 import logging
 from typing import Type
 
-from sklearn.inspection import permutation_importance
+from sklearn.feature_selection import RFECV
 from sklearn.pipeline import Pipeline
 
 logger = logging.getLogger(__name__)
@@ -55,9 +55,30 @@ def fine_tune(
     return fitted_pipeline 
 
 
+def feature_selection_pipeline(
+        model: BaseEstimator,
+        years: int,
+        scoring: str = "accuracy"
+    ) -> Pipeline:
+
+    tscv = TimeSeriesSplit(n_splits=years)
+    return Pipeline(
+        steps=[
+            ("feature_selection", RFECV(
+                estimator=model,
+                step=1,
+                cv=tscv,
+                scoring=scoring,
+                min_features_to_select=1,
+                n_jobs=-1,
+            ))
+        ]
+    )
+
 
 def read_processed_data() -> pd.DataFrame:
     return pd.read_excel(PROCESSED_DATA_PATH / "tennis_matches_features.xlsx")
+
 
 def training_pipeline(
         model : BaseEstimator

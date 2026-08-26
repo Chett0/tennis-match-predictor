@@ -71,16 +71,12 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
             player2_games_won = row["player2_1"] + row["player2_2"] + row["player2_3"] + row["player2_4"] + row["player2_5"]
             games_played = player1_games_won + player2_games_won
 
-            match_builder = MatchBuilder() \
-                                .add_round(row["Round"]) \
-                                .add_series(row["Series"]) \
-                                .add_date(row["Date"]) 
-
             matches.append(
-                match_builder
+                MatchBuilder()
+                .add_round(row["Round"]) 
+                .add_series(row["Series"]) 
                 .add_rank_diff(rank_diff)
                 .add_h2h_diff(h2h_diff)
-                .add_date(row["Date"])
                 .add_sets_h2h_diff(sets_h2h_diff)
                 .add_win_rate_diff(win_rate_diff)
                 .add_max_bet_diff(row["player1_Max"] - row["player2_Max"])
@@ -94,7 +90,7 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
                 .build()
             )
             
-            player1_won : bool = player1_name == row["match_winner"]
+            player1_won : bool = player1_name == row["Winner"]
             player1.game_update(
                 win = player1_won,
                 rival = player2_name,
