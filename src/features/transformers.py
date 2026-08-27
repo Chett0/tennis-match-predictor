@@ -4,15 +4,43 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from src.utils.match import Match, MatchBuilder
-from src.utils.player import Player
+from src.utils.player import Player, WeightedRankingMethod
 
 class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
 
-    def __init__(self) -> None:
-        pass
+    def __init__(
+            self,
+            h2h_decay_days : float = 365,
+            win_ratio_decay_days : float = 365,
+    ) -> None:
+        self._h2h_decay_days = h2h_decay_days
+        self._win_ratio_decay_days = win_ratio_decay_days
+
+    @property
+    def h2h_decay_days(self):
+        """Field to control decay of head-to-head matches. The default is 365 days."""
+        return self._h2h_decay_days
+
+    @h2h_decay_days.setter
+    def h2h_decay_days(self, value):
+        if value <= 0:
+            raise ValueError("h2h_decay_days must be positive")
+        self._h2h_decay_days = value
+
+    @property
+    def win_ratio_decay_days(self):
+        """Field to control recency weighting of win ratios. The default is 365 days."""
+        return self._win_ratio_decay_days
+
+    @win_ratio_decay_days.setter
+    def win_ratio_decay_days(self, value):
+        if value <= 0:
+            raise ValueError("win_ratio_decay_days must be positive")
+        self._win_ratio_decay_days = value
+
 
     def fit(self, X : pd.DataFrame, y = None):
-        # cols of ohe of tournament
+        # ohe cols of tournament
         self.tournament_cols_ = [col for col in X.columns if col.startswith("Tournament")]
         self.players_ : dict[str, Player] = {}
         self.matches_ : list[Match] = []
@@ -54,18 +82,47 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
             player2 : Player = players[player2_name]
 
             rank_diff = row["player1_Rank"] - row["player2_Rank"]
+            weighted_ranking_method = WeightedRankingMethod.INVSQRT
+            weighted_ranking_diff = player1.get_weighted_ranking(row["player1_Rank"], weighted_ranking_method) - player2.get_weighted_ranking(row["player2_Rank"], weighted_ranking_method)
+            win_ratio_weighted_diff = (
+                player1.get_weighted_win_rate(row["Date"], self.win_ratio_decay_days)
+                - player2.get_weighted_win_rate(row["Date"], self.win_ratio_decay_days)
+            )
+            
             h2h_diff = player1.wins[player2_name]["matches"] - player2.wins[player1_name]["matches"]
+            h2h_weighted_diff = (
+                player1.get_h2h_weighted_wins(
+                    player2_name, row["Date"], self.h2h_decay_days
+                )
+                - player2.get_h2h_weighted_wins(
+                    player1_name, row["Date"], self.h2h_decay_days
+                )
+            )
             sets_h2h_diff = player1.wins[player2_name]["sets"] - player2.wins[player1_name]["sets"]
             win_rate_diff = player1.get_win_rate() - player2.get_win_rate()
+            win_rate_bestof3_diff = player1.get_win_rate_by_best_of(3) - player2.get_win_rate_by_best_of(3)
+            win_rate_bestof5_diff = player1.get_win_rate_by_best_of(5) - player2.get_win_rate_by_best_of(5)
+            number_recent_matches_diff = player1.get_matches_played_last_days(row["Date"]) - player2.get_matches_played_last_days(row["Date"])
+            last_k_games_win_rate_diff = player1.get_last_k_games_win_rate() - player2.get_last_k_games_win_rate()
+            last_k_sets_win_rate_diff = player1.get_last_k_sets_win_rate() - player2.get_last_k_sets_win_rate()
 
             max_games = 39 if row["Best of"] == 3 else 65
             fatigue_diff = player1.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games) - player2.get_fatigue(row["Date"], long_stop_days=15, max_games=max_games)
             last_k_matches_win_rate_diff = player1.get_last_k_matches_win_rate() - player2.get_last_k_matches_win_rate()
+            last_k_matches_rank_variation_diff = player1.get_last_k_matches_rank_variation(row["player1_Rank"]) - player2.get_last_k_matches_rank_variation(row["player2_Rank"])
             win_streak_diff = player1.win_streak - player2.win_streak
             lose_streak_diff = player1.lose_streak - player2.lose_streak
 
             court_win_rate_diff : float = player1.get_court_performance(row["Court"]) - player2.get_court_performance(row["Court"])
             surface_win_rate_diff : float = player1.get_surface_performance(row["Surface"]) - player2.get_surface_performance(row["Surface"])
+            h2h_court_diff : float = (
+                player1.get_h2h_court_performance(row["Court"], player2_name)
+                - player2.get_h2h_court_performance(row["Court"], player1_name)
+            )
+            h2h_surface_diff : float = (
+                player1.get_h2h_surface_performance(row["Surface"], player2_name)
+                - player2.get_h2h_surface_performance(row["Surface"], player1_name)
+            )
 
             player1_games_won = row["player1_1"] + row["player1_2"] + row["player1_3"] + row["player1_4"] + row["player1_5"]
             player2_games_won = row["player2_1"] + row["player2_2"] + row["player2_3"] + row["player2_4"] + row["player2_5"]
@@ -76,15 +133,26 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
                 .add_round(row["Round"]) 
                 .add_series(row["Series"]) 
                 .add_rank_diff(rank_diff)
+                .add_weighted_ranking_diff(weighted_ranking_diff)
+                .add_win_ratio_weighted_diff(win_ratio_weighted_diff)
                 .add_h2h_diff(h2h_diff)
+                .add_h2h_weighted_diff(h2h_weighted_diff)
                 .add_sets_h2h_diff(sets_h2h_diff)
                 .add_win_rate_diff(win_rate_diff)
+                .add_win_rate_bestof3_diff(win_rate_bestof3_diff)
+                .add_win_rate_bestof5_diff(win_rate_bestof5_diff)
+                .add_number_recent_matches_diff(number_recent_matches_diff)
+                .add_last_k_games_win_rate_diff(last_k_games_win_rate_diff)
+                .add_last_k_sets_win_rate_diff(last_k_sets_win_rate_diff)
                 .add_max_bet_diff(row["player1_Max"] - row["player2_Max"])
                 .add_avg_bet_diff(row["player1_Avg"] - row["player2_Avg"])
                 .add_fatigue_diff(fatigue_diff)
                 .add_last_k_matches_win_rate_diff(last_k_matches_win_rate_diff)
+                .add_last_k_matches_rank_variation_diff(last_k_matches_rank_variation_diff)
                 .add_court_win_rate_diff(court_win_rate_diff)
                 .add_surface_win_rate_diff(surface_win_rate_diff)
+                .add_h2h_court_diff(h2h_court_diff)
+                .add_h2h_surface_diff(h2h_surface_diff)
                 .add_win_streak_diff(win_streak_diff)
                 .add_lose_streak_diff(lose_streak_diff)
                 .build()
@@ -99,6 +167,10 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
                 surface = row["Surface"],
                 sets_won = row["player1_sets"],
                 games_played = games_played,
+                rank = row["player1_Rank"],
+                best_of = row["Best of"],
+                games_won = player1_games_won,
+                sets_played = row["player1_sets"] + row["player2_sets"],
             )
             player2.game_update(
                 win = not player1_won,
@@ -108,6 +180,10 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
                 surface = row["Surface"],
                 sets_won = row["player2_sets"],
                 games_played = games_played,
+                rank = row["player2_Rank"],
+                best_of = row["Best of"],
+                games_won = player2_games_won,
+                sets_played = row["player1_sets"] + row["player2_sets"],
             )
 
         return matches

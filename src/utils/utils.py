@@ -26,7 +26,7 @@ CAT_COLS = ["Tournament"]
 # Typo in the raw files, mapped to the value they were meant to be
 COMMENT_TYPOS = {"Rrtired": "Retired"}
 
-COMMENT_ROW_DROP = ["Awarded", "Walkover", "Disqualified"]
+COMMENT_ROW_DROP = ["Awarded", "Walkover", "Disqualified", "Retired", "Rretired"]
 
 BET_COLS = [
     "player1_B365", 

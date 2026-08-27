@@ -28,7 +28,7 @@ def plot_feature_importance(
         feature_importances : pd.Series,
         top_n : int = 20
 ):
-    fig, ax = plt.subplots(figsize=(9,4))
+    fig, ax = plt.subplots(figsize=(15,15))
     ax.barh(range(0,top_n), feature_importances[:top_n])
     ax.set_title("Feature Importances")
     ax.set_yticks(range(top_n))
