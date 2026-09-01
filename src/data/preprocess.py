@@ -32,7 +32,7 @@ from src.utils.utils import (
     SERIES_ORDER
 )
 from src.data.loader import PROCESSED_DATA_PATH, load_data, train_test_split
-from src.data.transformers import DropFeatureSelector, AlignTypesTransformer, ReplaceValuesTransformer, BestOfImputer #, OutliersTransformer
+from src.data.transformers import DropFeatureSelector, ReplaceValuesTransformer, BestOfImputer 
 
 
 def filter_rows(
@@ -98,7 +98,7 @@ def preprocessing_pipeline(X : pd.DataFrame, y : pd.Series) -> Pipeline:
     ], X, y)
 
     zero_imputer = SimpleImputer(strategy="constant", fill_value=0)
-    bet_imputer = SimpleImputer(strategy="constant", fill_value=1.01)
+    bet_imputer = SimpleImputer(strategy="constant", fill_value=2.0)
     rank_imputer = SimpleImputer(strategy="constant", fill_value=X[RANK_COLS].max().max())
     point_imputer = SimpleImputer(strategy="constant", fill_value=X[POINT_COLS].min().min())
     best_of_imputer = BestOfImputer()
@@ -134,10 +134,11 @@ def preprocessing_pipeline(X : pd.DataFrame, y : pd.Series) -> Pipeline:
     pipeline = Pipeline(
         steps=[
             ("fix_typos", ReplaceValuesTransformer(column="Comment", replacements=COMMENT_TYPOS)),
-            ("drop_cols", DropFeatureSelector(features_to_drop=["player1_BFE", "player2_BFE"])),
-            ("align_types", AlignTypesTransformer()),
+            ("drop_cols", DropFeatureSelector(features_to_drop=[
+                "player1_BFE", "player2_BFE", "player1_SJ", "player2_SJ",
+                "player1_LB", "player2_LB", "player1_EX", "player2_EX",
+                ])),
             ("preprocessing", preprocessor),
-            # ("align_types", AlignTypesTransformer()),
             ("best_of_imputer", best_of_imputer),
         ],
     )

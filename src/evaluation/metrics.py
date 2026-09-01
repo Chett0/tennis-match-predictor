@@ -63,11 +63,11 @@ def cross_validation(
 def feature_importance(
         pipeline : RandomizedSearchCV | GridSearchCV,
         X : pd.DataFrame,
-        model_step : str = "train",
+        model_step : str = "training",
 ) -> pd.DataFrame:
 
     best = cast(Pipeline, pipeline.best_estimator_)
-    model = best.named_steps[model_step].named_steps["model"]
+    model = best.named_steps[model_step]
 
     transformers = best[:-1]
     names = transformers.transform(X).columns

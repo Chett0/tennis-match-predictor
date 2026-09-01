@@ -84,10 +84,6 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
             rank_diff = row["player1_Rank"] - row["player2_Rank"]
             weighted_ranking_method = WeightedRankingMethod.INVSQRT
             weighted_ranking_diff = player1.get_weighted_ranking(row["player1_Rank"], weighted_ranking_method) - player2.get_weighted_ranking(row["player2_Rank"], weighted_ranking_method)
-            win_ratio_weighted_diff = (
-                player1.get_weighted_win_rate(row["Date"], self.win_ratio_decay_days)
-                - player2.get_weighted_win_rate(row["Date"], self.win_ratio_decay_days)
-            )
             
             h2h_diff = player1.wins[player2_name]["matches"] - player2.wins[player1_name]["matches"]
             h2h_weighted_diff = (
@@ -134,7 +130,6 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
                 .add_series(row["Series"]) 
                 .add_rank_diff(rank_diff)
                 .add_weighted_ranking_diff(weighted_ranking_diff)
-                .add_win_ratio_weighted_diff(win_ratio_weighted_diff)
                 .add_h2h_diff(h2h_diff)
                 .add_h2h_weighted_diff(h2h_weighted_diff)
                 .add_sets_h2h_diff(sets_h2h_diff)

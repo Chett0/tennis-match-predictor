@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import datetime
 
 @dataclass
 class Match:
@@ -27,7 +26,6 @@ class Match:
     number_recent_matches_diff : int = 0
     last_k_games_win_rate_diff : float = 0.0
     last_k_sets_win_rate_diff : float = 0.0
-    win_ratio_weighted_diff : float = 0.0
 
 
 class MatchBuilder:
@@ -46,10 +44,6 @@ class MatchBuilder:
 
     def add_weighted_ranking_diff(self, weighted_ranking_diff : float):
         self.weighted_ranking_diff : float = weighted_ranking_diff
-        return self
-
-    def add_win_ratio_weighted_diff(self, win_ratio_weighted_diff : float):
-        self.win_ratio_weighted_diff : float = win_ratio_weighted_diff
         return self
     
     def add_h2h_diff(self, h2h_diff : int):
@@ -146,7 +140,6 @@ class MatchBuilder:
             last_k_matches_win_rate_diff = self.last_k_matches_win_rate_diff,
             last_k_matches_rank_variation_diff = self.last_k_matches_rank_variation_diff,
             weighted_ranking_diff = self.weighted_ranking_diff,
-            win_ratio_weighted_diff = self.win_ratio_weighted_diff,
             court_win_rate_diff = self.court_win_rate_diff,
             surface_win_rate_diff = self.surface_win_rate_diff,
             win_streak_diff = self.win_streak_diff,

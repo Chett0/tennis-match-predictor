@@ -1,15 +1,41 @@
+from dataclasses import dataclass, field
 import enum
 
 import numpy as np
 from collections import defaultdict, deque
 from datetime import datetime    
 
-
 class WeightedRankingMethod(enum.Enum):
     INV = "inv"
     LOG = "log"
     INVSQRT = "invsqrt"
 
+@dataclass
+class PerformanceStats:
+    matches : int = 0
+    wins : int = 0
+
+@dataclass
+class PerformanceStatsWithRivals:
+    stats : PerformanceStats = field(default_factory=PerformanceStats)
+    rivals : defaultdict[str, PerformanceStats] = field(default_factory=lambda: defaultdict(PerformanceStats))
+
+
+@dataclass
+class PerformanceTracker:
+    best_of : defaultdict[int, PerformanceStats] = field(default_factory=lambda: defaultdict(lambda : PerformanceStats()))
+    courts : defaultdict[str, PerformanceStatsWithRivals] = field(default_factory=lambda: defaultdict(lambda : PerformanceStatsWithRivals()))
+    surfaces : defaultdict[str, PerformanceStatsWithRivals] = field(default_factory=lambda: defaultdict(lambda : PerformanceStatsWithRivals()))
+
+@dataclass
+class MatchResult:
+    date : datetime
+    win : bool
+    rank : int
+    games_won : int
+    games_played : int
+    sets_won : int
+    sets_played : int
 
 class Player:
 
@@ -22,34 +48,10 @@ class Player:
         })
         self.h2h_matches : defaultdict[str, list[tuple[datetime, bool]]] = defaultdict(list)
         self.num_games : int = 0
-        self.num_wins : int = 0
-        self.match_results : list[tuple[datetime, bool]] = []
-        self.best_of_performance : dict[int, dict[str, int]] = defaultdict(lambda : {
-            "games" : 0,
-            "wins" : 0,
-        })
-        self.last_k_matches : deque[int] = deque(maxlen=k)
-        self.last_k_matches_rank: deque[int] = deque(maxlen=k)
-        self.last_k_games : deque[tuple[int, int]] = deque(maxlen=k)
-        self.last_k_sets : deque[tuple[int, int]] = deque(maxlen=k)
+        self.last_k_matches : deque[MatchResult] = deque(maxlen=k)
         self.win_streak : int = 0 
         self.lose_streak : int = 0
-        self.court_performance : dict= defaultdict(lambda : {
-            "games" : 0, 
-            "wins" : 0,
-            "rivals" : defaultdict(lambda : {
-                "games" : 0,
-                "wins" : 0
-            })
-        })
-        self.surface_performance : dict = defaultdict(lambda : {
-            "games" : 0, 
-            "wins" : 0,
-            "rivals" : defaultdict(lambda : {
-                "games" : 0,
-                "wins" : 0
-            })
-        })
+        self.performance = PerformanceTracker()
 
     def game_update(
             self,
@@ -69,41 +71,45 @@ class Player:
         if best_of not in (3, 5):
             raise ValueError("best_of must be either 3 or 5")
 
-        self.best_of_performance[best_of]["games"] += 1
+        self.performance.best_of[best_of].matches += 1
         self.last_match = {
             "date" : match_date,
             "games_played" : games_played
         }
         self.num_games += 1
-        self.match_results.append((match_date, win))
 
         if win:
-            self.num_wins += 1
-            self.best_of_performance[best_of]["wins"] += 1
+            self.performance.best_of[best_of].wins += 1
             self.wins[rival]["matches"] += 1
             self.wins[rival]["sets"] += sets_won
             self.win_streak += 1
             self.lose_streak = 0
-            self.last_k_matches.append(1)
         else:
             self.win_streak = 0
             self.lose_streak += 1
-            self.last_k_matches.append(0)
 
         self.h2h_matches[rival].append((match_date, win))
-        self.last_k_matches_rank.append(rank)
-        self.last_k_games.append((games_won, games_played - games_won))
-        self.last_k_sets.append((sets_won, sets_played - sets_won))
+        self.last_k_matches.append(
+            MatchResult(
+                date=match_date,
+                win=win,
+                rank=rank,
+                games_won=games_won,
+                games_played=games_played,
+                sets_won=sets_won,
+                sets_played=sets_played
+            )
+        )
 
-        self.court_performance[court]["games"] += 1
-        self.surface_performance[surface]["games"] += 1
-        self.court_performance[court]["rivals"][rival]["games"] += 1
-        self.surface_performance[surface]["rivals"][rival]["games"] += 1
+        self.performance.courts[court].stats.matches += 1
+        self.performance.surfaces[surface].stats.matches += 1
+        self.performance.courts[court].rivals[rival].matches += 1
+        self.performance.surfaces[surface].rivals[rival].matches += 1
         if win:
-            self.court_performance[court]["wins"] += 1
-            self.surface_performance[surface]["wins"] += 1
-            self.court_performance[court]["rivals"][rival]["wins"] += 1
-            self.surface_performance[surface]["rivals"][rival]["wins"] += 1
+            self.performance.courts[court].rivals[rival].wins += 1
+            self.performance.surfaces[surface].rivals[rival].wins += 1
+            self.performance.courts[court].rivals[rival].wins += 1
+            self.performance.surfaces[surface].rivals[rival].wins += 1
 
 
     def get_weighted_ranking(self, current_ranking : int, method : WeightedRankingMethod) -> float:
@@ -118,28 +124,7 @@ class Player:
 
 
     def get_win_rate(self) -> float :
-        return self.num_wins / self.num_games if self.num_games > 0 else 0.5
-
-
-    def get_weighted_win_rate(
-            self,
-            reference_date : datetime,
-            decay_days : float = 365,
-    ) -> float:
-        """Return the win rate with exponentially decaying recency weights."""
-        if decay_days <= 0:
-            raise ValueError("decay_days must be positive")
-
-        weighted_wins = 0.0
-        total_weight = 0.0
-        for match_date, win in self.match_results:
-            age_days = max(0, (reference_date - match_date).days)
-            weight = np.exp(-age_days / decay_days)
-            total_weight += weight
-            if win:
-                weighted_wins += weight
-
-        return weighted_wins / total_weight if total_weight > 0 else 0.5
+        return len(self.wins) / self.num_games if self.num_games > 0 else 0.5
 
 
     def get_win_rate_by_best_of(self, best_of : int) -> float:
@@ -147,11 +132,11 @@ class Player:
         if best_of not in (3, 5):
             raise ValueError("best_of must be either 3 or 5")
 
-        performance = self.best_of_performance[best_of]
-        if performance["games"] == 0:
+        performance = self.performance.best_of[best_of]
+        if performance.matches == 0:
             return 0.5
         
-        return performance["wins"] / performance["games"]
+        return performance.wins / performance.matches
 
 
     def get_matches_played_last_days(
@@ -164,23 +149,23 @@ class Player:
             raise ValueError("days must be non-negative")
 
         return sum(
-            0 <= (reference_date - match_date[0]).days <= days
-            for match_date in self.match_results
+            0 <= (reference_date - match_date.date).days <= days
+            for match_date in self.last_k_matches
         )
 
 
     def get_last_k_games_win_rate(self) -> float:
         """Return the games won divided by games played in the last k matches."""
-        games_won = sum(match[0] for match in self.last_k_games)
-        games_lost = sum(match[1] for match in self.last_k_games)
+        games_won = sum(match.games_won for match in self.last_k_matches)
+        games_lost = sum(match.games_played - match.games_won for match in self.last_k_matches)
         total_games = games_won + games_lost
         return games_won / total_games if total_games > 0 else 0.5
 
 
     def get_last_k_sets_win_rate(self) -> float:
         """Return the sets won divided by sets played in the last k matches."""
-        sets_won = sum(match[0] for match in self.last_k_sets)
-        sets_lost = sum(match[1] for match in self.last_k_sets)
+        sets_won = sum(match.sets_won for match in self.last_k_matches)
+        sets_lost = sum(match.sets_played - match.sets_won for match in self.last_k_matches)
         total_sets = sets_won + sets_lost
         return sets_won / total_sets if total_sets > 0 else 0.5
 
@@ -224,16 +209,16 @@ class Player:
             return 0.5
         elif len(self.last_k_matches) < self.k:
             n = len(self.last_k_matches)
-            rate = sum(self.last_k_matches) / n
+            rate = sum(match.win for match in self.last_k_matches) / n
             confidence = n / self.k 
             return rate * confidence + 0.5 * (1 - confidence)
-        return sum(self.last_k_matches) / len(self.last_k_matches)
+        return sum(match.win for match in self.last_k_matches) / len(self.last_k_matches)
 
 
     def get_last_k_matches_rank_variation(self, current_rank: int) -> int:
-        if not self.last_k_matches_rank:
+        if not self.last_k_matches:
             return 0
-        return current_rank - self.last_k_matches_rank[0]
+        return current_rank - self.last_k_matches[0].rank
 
     
     def get_court_performance(
@@ -242,8 +227,8 @@ class Player:
         ) -> float:
         "Return the win rate of the player on a specific court if any games are played, otherwise 0.5"
 
-        court_performance : dict[str, int] = self.court_performance[court]
-        court_win_rate = court_performance["wins"] / court_performance["games"] if court_performance["games"] > 0 else 0.5
+        court_performance : PerformanceStatsWithRivals = self.performance.courts[court]
+        court_win_rate = court_performance.stats.wins / court_performance.stats.matches if court_performance.stats.matches > 0 else 0.5
         return court_win_rate
 
 
@@ -253,10 +238,10 @@ class Player:
             rival : str,
     ) -> float:
         """Return this player's win rate against a rival on a specific court."""
-        rival_performance = self.court_performance[court]["rivals"][rival]
+        rival_performance : PerformanceStats = self.performance.courts[court].rivals[rival]
         return (
-            rival_performance["wins"] / rival_performance["games"]
-            if rival_performance["games"] > 0 else 0.5
+            rival_performance.wins / rival_performance.matches
+            if rival_performance.matches > 0 else 0.5
         )
 
 
@@ -266,8 +251,8 @@ class Player:
     ) -> float:
         
         "Return the win rate of the player on a specific surface if any games are played, otherwise 0.5"
-        surface_performance : dict[str, int] = self.surface_performance[surface]
-        surface_win_rate = surface_performance["wins"] / surface_performance["games"] if surface_performance["games"] > 0 else 0.5
+        surface_performance : PerformanceStatsWithRivals = self.performance.surfaces[surface]
+        surface_win_rate = surface_performance.stats.wins / surface_performance.stats.matches if surface_performance.stats.matches > 0 else 0.5
         return surface_win_rate
 
 
@@ -277,8 +262,8 @@ class Player:
             rival : str,
     ) -> float:
         """Return this player's win rate against a rival on a specific surface."""
-        rival_performance = self.surface_performance[surface]["rivals"][rival]
+        rival_performance = self.performance.surfaces[surface].rivals[rival]
         return (
-            rival_performance["wins"] / rival_performance["games"]
-            if rival_performance["games"] > 0 else 0.5
+            rival_performance.wins / rival_performance.matches
+            if rival_performance.matches > 0 else 0.5
         )

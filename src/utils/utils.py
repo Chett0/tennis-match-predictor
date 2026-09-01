@@ -26,7 +26,7 @@ CAT_COLS = ["Tournament"]
 # Typo in the raw files, mapped to the value they were meant to be
 COMMENT_TYPOS = {"Rrtired": "Retired"}
 
-COMMENT_ROW_DROP = ["Awarded", "Walkover", "Disqualified", "Retired", "Rretired"]
+COMMENT_ROW_DROP = ["Awarded", "Walkover", "Disqualified", "Sched"]
 
 BET_COLS = [
     "player1_B365", 
@@ -65,6 +65,9 @@ swap_cols = [
     ["B365W", "B365L"],
     ["BFEW", "BFEL"],
     ["PSW", "PSL"],
+    ["EXW", "EXL"],
+    ["SJW", "SJL"],
+    ["LBW", "LBL"],
     ["MaxW", "MaxL"],
     ["AvgW", "AvgL"],
     ["W1", "L1"],

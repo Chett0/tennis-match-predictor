@@ -30,32 +30,6 @@ class DropFeatureSelector(BaseEstimator, TransformerMixin):
         return X.drop(columns=self.features_to_drop_, errors="ignore")
     
 
-class AlignTypesTransformer(BaseEstimator, TransformerMixin):
-    """Align types of the columns"""
-
-    def __init__(self):
-        pass
-
-    def fit(self, X, y=None):
-        self.is_fitted_ = True
-        return self
-
-    def transform(self, X : pd.DataFrame):
-        cols = [
-            col for col in X.select_dtypes(include='float').columns 
-            if X[col].dropna().apply(float.is_integer).all() 
-        ]
-
-        # game columns are considered as object
-        # for col in GAME_COLS:
-        #     if col in X.columns and col not in cols:
-        #         X[col] = pd.to_numeric(X[col], errors='coerce')
-        #         cols.append(col)
-
-        X[cols] = X[cols].astype("Int64")
-        return X
-    
-
 class ReplaceValuesTransformer(BaseEstimator, TransformerMixin):
     """Custom transformer to replace known wrong values in a column with their canonical version"""
 
@@ -115,27 +89,3 @@ class BestOfImputer(BaseEstimator, TransformerMixin):
 
         return X
     
-
-# class OutliersTransformer(BaseEstimator, TransformerMixin):
-#     """Custom transformer to handle outliers in the dataset"""
-
-#     def __init__(self, n_estimators = 50):
-#         self.rf = RandomForestClassifier(
-#             random_state=42,
-#             n_estimators=n_estimators,
-#         )
-
-#     def fit(self, X, y):
-#         self.is_fitted_ = True
-#         self.rf.fit(X=X, y=y)
-#         return self
-    
-#     def transform(self, X):
-#         leaves = self.rf.apply(X)
-#         pair_wise_sim = pairwise_distances(
-#             X=leaves,
-#             metric=lambda i, j : np.mean(i != j)
-#         )
-#         out = (pair_wise_sim**2).sum(axis=0)**-1
-        
-#         return X

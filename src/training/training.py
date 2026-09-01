@@ -15,7 +15,7 @@ from src.data.loader import PROCESSED_DATA_PATH, train_test_split
 
 
 def fine_tune(
-        pipeline: Pipeline,
+        pipeline: Pipeline | BaseEstimator,
         tuning_methods : Type[BaseSearchCV],
         years : int,
         hyperparams : dict = {},
@@ -30,7 +30,7 @@ def fine_tune(
     tscv = TimeSeriesSplit(n_splits=years)
     
     if tuning_methods == RandomizedSearchCV:
-        fitted_pipeline = RandomizedSearchCV(
+        search = RandomizedSearchCV(
             estimator=pipeline,
             param_distributions=hyperparams,
             n_iter=n_iter,
@@ -41,7 +41,7 @@ def fine_tune(
             n_jobs=n_jobs
         )
     elif tuning_methods == GridSearchCV:
-        fitted_pipeline = GridSearchCV(
+        search = GridSearchCV(
             estimator=pipeline,
             param_grid=hyperparams,
             cv=tscv,
@@ -52,7 +52,7 @@ def fine_tune(
     else:
         raise ValueError("Unsupported tuning method")
     
-    return fitted_pipeline 
+    return search 
 
 
 def feature_selection_pipeline(
@@ -86,7 +86,7 @@ def training_pipeline(
     
     return Pipeline(
         steps=[
-            ("model", model)
+            ("training", model)
         ]
     )
 
