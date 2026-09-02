@@ -21,9 +21,9 @@ from sklearn.pipeline import Pipeline
 
 def evaluation_metrics(
         model, 
-        X_test : pd.DataFrame, 
+        X_test : pd.DataFrame | np.ndarray, 
         y_test : pd.Series,
-        y_pred : np.ndarray
+        y_pred
 ) -> dict:
 
     metrics = {
@@ -38,15 +38,14 @@ def evaluation_metrics(
 
 
 def cross_validation(
-        pipeline :  RandomizedSearchCV | GridSearchCV,
-        X : pd.DataFrame,
+        pipeline :  RandomizedSearchCV | GridSearchCV | Pipeline,
+        X : pd.DataFrame | np.ndarray,
         y : pd.Series,
-        years : int,
+        tscv : TimeSeriesSplit = TimeSeriesSplit(n_splits=5),
         verbose : int = 0,
         scoring : str = "accuracy"
 ) -> np.ndarray:
     
-    tscv = TimeSeriesSplit(n_splits=years - 1)
     scores = cross_val_score(
         estimator=pipeline,
         X=X, 
@@ -61,15 +60,14 @@ def cross_validation(
 
 
 def feature_importance(
-        pipeline : RandomizedSearchCV | GridSearchCV,
+        pipeline : Pipeline,
         X : pd.DataFrame,
         model_step : str = "training",
 ) -> pd.DataFrame:
 
-    best = cast(Pipeline, pipeline.best_estimator_)
-    model = best.named_steps[model_step]
+    model = pipeline.named_steps[model_step]
 
-    transformers = best[:-1]
+    transformers = pipeline[:-1]
     names = transformers.transform(X).columns
 
     importances = pd.DataFrame(

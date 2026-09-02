@@ -1,5 +1,5 @@
 import logging
-from typing import Type
+from typing import List, Type
 
 from sklearn.feature_selection import RFECV
 from sklearn.pipeline import Pipeline
@@ -11,14 +11,14 @@ from sklearn.model_selection import GridSearchCV, TimeSeriesSplit, RandomizedSea
 from sklearn.model_selection._search import BaseSearchCV
 from sklearn.base import BaseEstimator
 
-from src.data.loader import PROCESSED_DATA_PATH, train_test_split
+from src.data.loader import PROCESSED_DATA_PATH
 
 
 def fine_tune(
         pipeline: Pipeline | BaseEstimator,
         tuning_methods : Type[BaseSearchCV],
-        years : int,
-        hyperparams : dict = {},
+        hyperparams : dict  | List[dict] ,
+        tscv : TimeSeriesSplit = TimeSeriesSplit(n_splits=5),
         scoring : str = "accuracy",
         n_iter : int = 10,
         verbose : int = 2, 
@@ -26,8 +26,6 @@ def fine_tune(
         random_state : int = 42
     ) -> RandomizedSearchCV | GridSearchCV:
     """Fine tune a pipeline using specified tuning methods and hyperparameters."""
-
-    tscv = TimeSeriesSplit(n_splits=years)
     
     if tuning_methods == RandomizedSearchCV:
         search = RandomizedSearchCV(
@@ -57,11 +55,10 @@ def fine_tune(
 
 def feature_selection_pipeline(
         model: BaseEstimator,
-        years: int,
+        tscv: TimeSeriesSplit = TimeSeriesSplit(n_splits=5),
         scoring: str = "accuracy"
     ) -> Pipeline:
 
-    tscv = TimeSeriesSplit(n_splits=years)
     return Pipeline(
         steps=[
             ("feature_selection", RFECV(
@@ -89,6 +86,3 @@ def training_pipeline(
             ("training", model)
         ]
     )
-
-    
-    

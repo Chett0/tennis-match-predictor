@@ -28,11 +28,12 @@ def plot_feature_importance(
         feature_importances : pd.Series,
         top_n : int = 20
 ):
+    n = min(top_n, len(feature_importances))
     fig, ax = plt.subplots(figsize=(15,15))
-    ax.barh(range(0,top_n), feature_importances[:top_n])
+    ax.barh(range(0,n), feature_importances[:n])
     ax.set_title("Feature Importances")
-    ax.set_yticks(range(top_n))
-    ax.set_yticklabels(feature_names[:top_n])
+    ax.set_yticks(range(n))
+    ax.set_yticklabels(feature_names[:n])
     ax.grid()
 
 

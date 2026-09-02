@@ -1,9 +1,12 @@
 from typing import Tuple, cast
 
 import pandas as pd
-from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator
+
+NUM_SPLITS = 5
+TSCV = TimeSeriesSplit(n_splits=NUM_SPLITS)
 
 GAME_COLS = [
     "player1_1", 
@@ -66,7 +69,6 @@ swap_cols = [
     ["BFEW", "BFEL"],
     ["PSW", "PSL"],
     ["EXW", "EXL"],
-    ["SJW", "SJL"],
     ["LBW", "LBL"],
     ["MaxW", "MaxL"],
     ["AvgW", "AvgL"],
@@ -83,11 +85,6 @@ def get_df_from_pipeline(pipeline : Pipeline, df : pd.DataFrame):
     return pd.DataFrame(df_)
 
 
-def get_best_estimator(
-        pipeline : RandomizedSearchCV | GridSearchCV, 
-        model_step : str = "train"
-    ) -> Tuple[BaseEstimator, Pipeline]:
-
+def get_best_estimator(pipeline : RandomizedSearchCV | GridSearchCV) -> Pipeline:
     best = cast(Pipeline, pipeline.best_estimator_)
-    model = best.named_steps[model_step].named_steps["model"]
-    return model, best
+    return best
