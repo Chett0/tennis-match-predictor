@@ -32,7 +32,12 @@ from src.utils.utils import (
     SERIES_ORDER
 )
 from src.data.loader import PROCESSED_DATA_PATH, load_data, train_test_split
-from src.data.transformers import DropFeatureSelector, ReplaceValuesTransformer, BestOfImputer 
+from src.data.transformers import (
+    DropFeatureSelector,
+    ReplaceValuesTransformer,
+    RankPointsImputer,
+    BestOfImputer,
+)
 
 
 def filter_rows(
@@ -99,8 +104,10 @@ def preprocessing_pipeline(X : pd.DataFrame, y : pd.Series) -> Pipeline:
 
     zero_imputer = SimpleImputer(strategy="constant", fill_value=0)
     bet_imputer = SimpleImputer(strategy="constant", fill_value=2.0)
-    rank_imputer = SimpleImputer(strategy="constant", fill_value=X[RANK_COLS].max().max())
-    point_imputer = SimpleImputer(strategy="constant", fill_value=X[POINT_COLS].min().min())
+    rank_imputer = RankPointsImputer(
+        default_rank=int(X[RANK_COLS].median().median()),
+        default_points=int(X[POINT_COLS].median().median()),
+    )
     best_of_imputer = BestOfImputer()
 
     categorical_encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
@@ -119,9 +126,6 @@ def preprocessing_pipeline(X : pd.DataFrame, y : pd.Series) -> Pipeline:
         transformers=[
             ("zero_imputer", zero_imputer, GAME_COLS + SETS_COLS),
             ("bet_imputer", bet_imputer, BET_COLS),
-            ("rank_imputer", rank_imputer, RANK_COLS),
-            ("point_imputer", point_imputer, POINT_COLS),
-
             ("categorical_encoder", categorical_encoder, CAT_COLS),
             ("round_encoder", round_encoder, ["Round"]),
             ("series_encoder", series_encoder, ["Series"]),
@@ -138,6 +142,7 @@ def preprocessing_pipeline(X : pd.DataFrame, y : pd.Series) -> Pipeline:
                 "player1_BFE", "player2_BFE", "player1_SJ", "player2_SJ",
                 "player1_LB", "player2_LB", "player1_EX", "player2_EX",
                 ])),
+            ("rank_points_imputer", rank_imputer),
             ("preprocessing", preprocessor),
             ("best_of_imputer", best_of_imputer),
         ],

@@ -1,5 +1,8 @@
 import pandas as pd
 import numpy as np
+
+from collections import defaultdict
+
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import pairwise_distances
@@ -44,6 +47,40 @@ class ReplaceValuesTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X):
         X = X.copy()
         X[self.column] = X[self.column].replace(self.replacements)
+        return X
+
+
+
+class RankPointsImputer(BaseEstimator, TransformerMixin):
+    """Impute missing player ranks and points from earlier rows."""
+
+    def __init__(self, default_rank : int, default_points : int):
+        self.players : dict[str, tuple[int, int]] = defaultdict(lambda: (default_rank, default_points))
+
+    def fit(self, X, y=None):
+        self.is_fitted_ = True
+        return self
+
+    def transform(self, X):
+        X = X.copy()
+
+        for idx, row in X.iterrows():
+            player1 = row["player1"]
+            player2 = row["player2"]
+
+            if pd.isna(row["player1_Rank"]):
+                X.loc[idx, "player1_Rank"] = self.players[player1][0]
+            if pd.isna(row["player2_Rank"]):
+                X.loc[idx, "player2_Rank"] = self.players[player2][0]
+
+            if pd.isna(row["player1_Pts"]):
+                X.loc[idx, "player1_Pts"] = self.players[player1][1]
+            if pd.isna(row["player2_Pts"]):
+                X.loc[idx, "player2_Pts"] = self.players[player2][1]
+
+            self.players[player1] = (X.loc[idx, "player1_Rank"], X.loc[idx, "player1_Pts"])
+            self.players[player2] = (X.loc[idx, "player2_Rank"], X.loc[idx, "player2_Pts"])
+
         return X
 
 
