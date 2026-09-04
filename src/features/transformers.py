@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from src.utils.match import Match, MatchBuilder
-from src.utils.player import Player, WeightedRankingMethod
+from src.utils.player import Player, WeightedRankingMethod, WeightedPointsMethod
 
 class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
 
@@ -12,9 +12,13 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
             self,
             h2h_decay_days : float = 365,
             win_ratio_decay_days : float = 365,
+            weighted_ranking_method : WeightedRankingMethod = WeightedRankingMethod.INVSQRT,
+            weighted_points_method : WeightedPointsMethod = WeightedPointsMethod.CUBE
     ) -> None:
         self._h2h_decay_days = h2h_decay_days
         self._win_ratio_decay_days = win_ratio_decay_days
+        self.weighted_ranking_method = weighted_ranking_method
+        self.weighted_points_method = weighted_points_method
 
     @property
     def h2h_decay_days(self):
@@ -81,9 +85,14 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
             player1 : Player = players[player1_name]
             player2 : Player = players[player2_name]
 
+            pts_diff = row["player1_Pts"] - row["player2_Pts"]
+            weighted_pts_diff = (
+                player1.get_weighted_points(row["player1_Pts"], self.weighted_points_method)
+                - player2.get_weighted_points(row["player2_Pts"], self.weighted_points_method)
+            )
+
             rank_diff = row["player1_Rank"] - row["player2_Rank"]
-            weighted_ranking_method = WeightedRankingMethod.INVSQRT
-            weighted_ranking_diff = player1.get_weighted_ranking(row["player1_Rank"], weighted_ranking_method) - player2.get_weighted_ranking(row["player2_Rank"], weighted_ranking_method)
+            weighted_ranking_diff = player1.get_weighted_ranking(row["player1_Rank"], self.weighted_ranking_method) - player2.get_weighted_ranking(row["player2_Rank"], self.weighted_ranking_method)
             
             h2h_diff = player1.wins[player2_name]["matches"] - player2.wins[player1_name]["matches"]
             h2h_weighted_diff = (
@@ -128,6 +137,8 @@ class FeatureEngineringTransformer(BaseEstimator, TransformerMixin):
                 MatchBuilder()
                 .add_round(row["Round"]) 
                 .add_series(row["Series"]) 
+                .add_pts_diff(pts_diff)
+                .add_weighted_pts_diff(weighted_pts_diff)
                 .add_rank_diff(rank_diff)
                 .add_weighted_ranking_diff(weighted_ranking_diff)
                 .add_h2h_diff(h2h_diff)

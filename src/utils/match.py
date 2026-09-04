@@ -4,6 +4,8 @@ from dataclasses import dataclass
 class Match:
     round : int
     series : int
+    pts_diff : float
+    weighted_pts_diff : float
     rank_diff : int
     weighted_ranking_diff : float
     h2h_diff : int
@@ -36,6 +38,14 @@ class MatchBuilder:
     
     def add_series(self, series : int):
         self.series : int = series
+        return self
+
+    def add_pts_diff(self, pts_diff : float):
+        self.pts_diff : float = pts_diff
+        return self
+
+    def add_weighted_pts_diff(self, weighted_pts_diff : float):
+        self.weighted_pts_diff : float = weighted_pts_diff
         return self
 
     def add_rank_diff(self, rank_diff : int):
@@ -130,6 +140,8 @@ class MatchBuilder:
         return Match(
             round = self.round,
             series = self.series,
+            pts_diff = self.pts_diff,
+            weighted_pts_diff = self.weighted_pts_diff,
             rank_diff = self.rank_diff,
             h2h_diff = self.h2h_diff,
             sets_h2h_diff = self.sets_h2h_diff,

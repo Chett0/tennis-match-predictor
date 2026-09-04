@@ -55,6 +55,8 @@ class RankPointsImputer(BaseEstimator, TransformerMixin):
     """Impute missing player ranks and points from earlier rows."""
 
     def __init__(self, default_rank : int, default_points : int):
+        self.default_rank = default_rank
+        self.default_points = default_points
         self.players : dict[str, tuple[int, int]] = defaultdict(lambda: (default_rank, default_points))
 
     def fit(self, X, y=None):

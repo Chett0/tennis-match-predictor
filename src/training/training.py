@@ -56,7 +56,8 @@ def fine_tune(
 def feature_selection_pipeline(
         model: BaseEstimator,
         tscv: TimeSeriesSplit = TimeSeriesSplit(n_splits=5),
-        scoring: str = "accuracy"
+        scoring: str = "accuracy",
+        min_features_to_select: int = 1
     ) -> Pipeline:
 
     return Pipeline(
@@ -66,7 +67,7 @@ def feature_selection_pipeline(
                 step=1,
                 cv=tscv,
                 scoring=scoring,
-                min_features_to_select=1,
+                min_features_to_select=min_features_to_select,
                 n_jobs=-1,
             ))
         ]

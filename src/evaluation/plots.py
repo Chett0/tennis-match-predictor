@@ -60,3 +60,33 @@ def plot_difference(
     ax.grid()
 
     plt.show()
+
+
+def plot_top100(df : pd.DataFrame):
+    """Plot the relationship between winner and loser ranks for matches where both players are in the top 100."""
+
+    # top_100 = df[(df["Date"] >= "2024-01-01") &(df["WRank"] <= 100) & (df["LRank"] <= 100)]
+    top_100 = df[(df["WRank"] <= 100) & (df["LRank"] <= 100)]
+
+    plt.scatter(top_100["WRank"], top_100["LRank"], alpha=0.1)
+    plt.plot([1, 100], [1, 100], color='red', linestyle='--')
+    plt.xlabel("Winner Rank (Top 100)")
+    plt.ylabel("Loser Rank (Top 100)")
+    plt.title("Winner vs Loser Rankings")
+
+    plt.show()
+
+
+
+def plot_rank_difference(df : pd.DataFrame):
+    """Plot the distribution of ranking differences between winners and losers."""
+
+    plt.hist(df["WRank"], bins=100, range=(1, 200), alpha=0.5, label='WRank')
+    plt.hist(df["LRank"], bins=100, range=(1, 200), alpha=0.5, label='LRank')
+
+    plt.xlabel('Ranking')
+    plt.ylabel('Frequency')
+    plt.title('Winner - Loser Ranking')
+    plt.legend()
+
+    plt.show()

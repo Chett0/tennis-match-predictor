@@ -63,6 +63,7 @@ def feature_importance(
         pipeline : Pipeline,
         X : pd.DataFrame,
         model_step : str = "training",
+        coef : bool = False
 ) -> pd.DataFrame:
 
     model = pipeline.named_steps[model_step]
@@ -70,10 +71,18 @@ def feature_importance(
     transformers = pipeline[:-1]
     names = transformers.transform(X).columns
 
-    importances = pd.DataFrame(
-        {"importance": model.feature_importances_},
-        index=names
-    )
+    if not coef:
+        importances = pd.DataFrame(
+            {"importance": model.feature_importances_},
+            index=names
+        )
+    else:
+        coefs = pipeline.named_steps['training'].coef_[0]
+        importances = pd.DataFrame(
+            {"importance": coefs},
+            index=names
+        )
+
 
     importances.sort_values(by="importance", ascending=False, inplace=True)
     return importances

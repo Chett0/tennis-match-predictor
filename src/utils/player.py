@@ -10,6 +10,11 @@ class WeightedRankingMethod(enum.Enum):
     LOG = "log"
     INVSQRT = "invsqrt"
 
+class WeightedPointsMethod(enum.Enum):
+    EXP = "exp"
+    SQUARE = "square"
+    CUBE = "cube"
+
 @dataclass
 class PerformanceStats:
     matches : int = 0
@@ -121,6 +126,16 @@ class Player:
             return 1 / np.sqrt(current_ranking)
         else:
             return np.exp(-current_ranking)
+
+
+    def get_weighted_points(self, current_points : float, method : WeightedPointsMethod) -> float:
+        if method == WeightedPointsMethod.EXP:
+            return np.exp(current_points / 1000)  # Scale down points to avoid overflow
+        elif method == WeightedPointsMethod.SQUARE:
+            return current_points ** 2
+        elif method == WeightedPointsMethod.CUBE:
+            return current_points ** 3
+        return current_points
 
 
     def get_win_rate(self) -> float :
