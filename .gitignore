@@ -4,3 +4,6 @@ __pycache__/
 data/processed/*
 logs/*
 .DS_Store
+report/*
+!report/*.tex
+!report/*.pdf
