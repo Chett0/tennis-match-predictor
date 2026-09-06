@@ -27,7 +27,7 @@ from src.utils.utils import (
     CAT_COLS,
     SETS_COLS,
     COMMENT_TYPOS,
-    swap_cols,
+    SWAP_COLS,
     ROUND_ORDER,
     SERIES_ORDER
 )
@@ -78,7 +78,7 @@ def create_labels(df : pd.DataFrame, random_state : int | None = 42):
     # It will be dropped in FeatureEngineringTransformer.
     df.drop(columns=["Loser"], inplace=True, errors="ignore")
 
-    for col1, col2 in swap_cols:
+    for col1, col2 in SWAP_COLS:
         new_col1, new_col2 = None, None
         if col1.startswith("W"):
             new_col1, new_col2 = "player1_" + col1[1:], "player2_" + col2[1:]
@@ -91,7 +91,7 @@ def create_labels(df : pd.DataFrame, random_state : int | None = 42):
 
     df["winner"] = np.where(swap_mask, 1, 0)
 
-    drop_cols = [col for pair in swap_cols for col in pair]
+    drop_cols = [col for pair in SWAP_COLS for col in pair]
     df.drop(columns=drop_cols, inplace=True)
 
 
@@ -126,6 +126,7 @@ def preprocessing_pipeline(X : pd.DataFrame, y : pd.Series) -> Pipeline:
         transformers=[
             ("zero_imputer", zero_imputer, GAME_COLS + SETS_COLS),
             ("bet_imputer", bet_imputer, BET_COLS),
+            ("surface_court_original", "passthrough", ["Tournament", "Surface", "Court"]),
             ("categorical_encoder", categorical_encoder, CAT_COLS),
             ("round_encoder", round_encoder, ["Round"]),
             ("series_encoder", series_encoder, ["Series"]),

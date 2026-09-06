@@ -24,7 +24,7 @@ GAME_COLS = [
 POINT_COLS = ["player1_Pts", "player2_Pts"]
 RANK_COLS = ["player1_Rank", "player2_Rank"]
 SETS_COLS = ["player1_sets", "player2_sets"]
-CAT_COLS = ["Tournament"]
+CAT_COLS = ["Tournament", "Surface", "Court"]
 
 # Typo in the raw files, mapped to the value they were meant to be
 COMMENT_TYPOS = {"Rrtired": "Retired"}
@@ -62,7 +62,7 @@ SERIES_ORDER = [[
     "Grand Slam"
 ]]
 
-swap_cols = [
+SWAP_COLS = [
     ["WRank", "LRank"],
     ["WPts", "LPts"],
     ["B365W", "B365L"],

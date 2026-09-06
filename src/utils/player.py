@@ -23,18 +23,22 @@ class PerformanceStats:
 @dataclass
 class PerformanceStatsWithRivals:
     stats : PerformanceStats = field(default_factory=PerformanceStats)
-    rivals : defaultdict[str, PerformanceStats] = field(default_factory=lambda: defaultdict(PerformanceStats))
+    rival_wins : defaultdict[str, int] = field(default_factory=lambda: defaultdict(int))
 
 
 @dataclass
 class PerformanceTracker:
     best_of : defaultdict[int, PerformanceStats] = field(default_factory=lambda: defaultdict(lambda : PerformanceStats()))
     courts : defaultdict[str, PerformanceStatsWithRivals] = field(default_factory=lambda: defaultdict(lambda : PerformanceStatsWithRivals()))
-    surfaces : defaultdict[str, PerformanceStatsWithRivals] = field(default_factory=lambda: defaultdict(lambda : PerformanceStatsWithRivals()))
+    tournaments : defaultdict[str, PerformanceStatsWithRivals] = field(default_factory=lambda : defaultdict(lambda : PerformanceStatsWithRivals()))
+    surfaces : defaultdict[str, PerformanceStatsWithRivals] = field(default_factory=lambda : defaultdict(lambda : PerformanceStatsWithRivals()))
+    rounds : defaultdict[float, PerformanceStatsWithRivals] = field(default_factory=lambda: defaultdict(lambda : PerformanceStatsWithRivals()))
+    series : defaultdict[float, PerformanceStatsWithRivals] = field(default_factory=lambda: defaultdict(lambda : PerformanceStatsWithRivals()))
 
 @dataclass
 class MatchResult:
     date : datetime
+    non_completed : bool
     win : bool
     rank : int
     games_won : int
@@ -63,8 +67,12 @@ class Player:
             win : bool,
             rival : str,
             match_date : datetime,
+            comment : str,
             court : str,
+            tournament : str,
             surface : str,
+            round : float,
+            series : float,
             rank: int,
             sets_won : int,
             sets_played : int,
@@ -97,6 +105,7 @@ class Player:
         self.last_k_matches.append(
             MatchResult(
                 date=match_date,
+                non_completed=comment.strip().lower() != "completed",
                 win=win,
                 rank=rank,
                 games_won=games_won,
@@ -107,14 +116,31 @@ class Player:
         )
 
         self.performance.courts[court].stats.matches += 1
+        self.performance.tournaments[tournament].stats.matches += 1
         self.performance.surfaces[surface].stats.matches += 1
-        self.performance.courts[court].rivals[rival].matches += 1
-        self.performance.surfaces[surface].rivals[rival].matches += 1
+        self.performance.rounds[round].stats.matches += 1
+        self.performance.series[series].stats.matches += 1
         if win:
-            self.performance.courts[court].rivals[rival].wins += 1
-            self.performance.surfaces[surface].rivals[rival].wins += 1
-            self.performance.courts[court].rivals[rival].wins += 1
-            self.performance.surfaces[surface].rivals[rival].wins += 1
+            self.performance.courts[court].stats.wins += 1
+            self.performance.tournaments[tournament].stats.wins += 1
+            self.performance.surfaces[surface].stats.wins += 1
+            self.performance.rounds[round].stats.wins += 1
+            self.performance.series[series].stats.wins += 1
+            self.performance.courts[court].rival_wins[rival] += 1
+            self.performance.tournaments[tournament].rival_wins[rival] += 1
+            self.performance.surfaces[surface].rival_wins[rival] += 1
+            self.performance.rounds[round].rival_wins[rival] += 1
+            self.performance.series[series].rival_wins[rival] += 1
+
+
+    def get_last_k_non_completed_matches(self) -> float:
+        """Return a recency-weighted non-completion score over the last k matches."""
+
+        score = 0.0
+        for position, match in enumerate(self.last_k_matches):
+            if match.non_completed:
+                score += 1 / (self.k - position + 1)
+        return score
 
 
     def get_weighted_ranking(self, current_ranking : int, method : WeightedRankingMethod) -> float:
@@ -200,23 +226,79 @@ class Player:
             if win:
                 age_days = max(0, (reference_date - match_date).days)
                 weighted_wins += np.exp(-age_days / decay_days)
-        return float(weighted_wins)
+        return weighted_wins
 
     
-    def get_fatigue(self, match_date : datetime, long_stop_days : int = 15, max_games : int = 39) -> float:
-        if self.last_match is None:
-            return 1
-        
-        days_since_last_match = (match_date - self.last_match["date"]).days
-        last_match_games = self.last_match["games_played"]
+    def get_fatigue(
+            self, 
+            match_date : datetime, 
+            long_stop_days : int = 21, 
+            max_games : int = 39
+        ) -> float:
+        """
+        Return a recent workload and layoff-risk score in the range [0, 1].
 
-        if days_since_last_match == 0:
-            return 1
+        The score combines four components:
 
-        if days_since_last_match > long_stop_days:
-            return long_stop_days / days_since_last_match
-        else:
-            return (last_match_games / max_games) / days_since_last_match
+        1. Recent workload: every previous match contributes its games played,
+           plus an additional load for each set above two. Its contribution
+           decays exponentially over three recovery days, so recent matches
+           matter more than older matches.
+        2. Congestion: two or more matches within the previous three days
+           increase the score.
+        3. Short rest: each match played with fewer than two full recovery
+           days contributes an additional penalty.
+        4. Layoff risk: a stop longer than ``long_stop_days`` contributes a
+           bounded risk term. This represents possible injury or loss of
+           match readiness; it is not treated as physical workload.
+
+        Non-completed matches receive a 10% workload increase because a
+        retirement may indicate an underlying physical problem. The final
+        score is a weighted sum:
+
+            0.55 * recent workload
+          + 0.20 * match congestion
+          + 0.15 * short-rest penalty
+          + 0.10 * long-stop risk
+
+        ``max_games`` normalizes games played for best-of-three or
+        best-of-five matches.
+        """
+
+        if not self.last_k_matches:
+            return 0
+
+        recovery_days = 3.0
+        recent_load = 0.0
+        short_rest = 0.0
+        matches_within_three_days = 0
+
+        for match in self.last_k_matches:
+            days_since_match = (match_date - match.date).days
+            workload = match.games_played / max_games + 0.1 * max(0, match.sets_played - 2)
+            if match.non_completed:
+                workload *= 1.1
+
+            recent_load += workload * np.exp(-days_since_match / recovery_days)
+            short_rest += max(0.0, (2.0 - days_since_match) / 2.0)
+            matches_within_three_days += days_since_match <= 3
+
+        normalized_load = min(1.0, recent_load)
+        congestion = min(1.0, max(0, matches_within_three_days - 1) / 2.0)
+        short_rest = min(1.0, short_rest)
+
+        days_since_last_match = (match_date - self.last_k_matches[-1].date).days
+        layoff_risk = (
+            min(1.0, (days_since_last_match - long_stop_days) / long_stop_days)
+            if days_since_last_match > long_stop_days else 0.0
+        )
+
+        return (
+            0.55 * normalized_load
+            + 0.20 * congestion
+            + 0.15 * short_rest
+            + 0.10 * layoff_risk
+        )
 
     
     def get_last_k_matches_win_rate(self) -> float:
@@ -236,7 +318,7 @@ class Player:
         return current_rank - self.last_k_matches[0].rank
 
     
-    def get_court_performance(
+    def get_court_win_rate(
             self, 
             court : str
         ) -> float:
@@ -247,20 +329,35 @@ class Player:
         return court_win_rate
 
 
-    def get_h2h_court_performance(
+    def get_tournament_win_rate(
+            self,
+            tournament : str,
+    ) -> float:
+        "Return the win rate of the player in a specific tournament if any games are played, otherwise 0.5"
+
+        tournament_performance : PerformanceStatsWithRivals = self.performance.tournaments[tournament]
+        tournament_win_rate = tournament_performance.stats.wins / tournament_performance.stats.matches if tournament_performance.stats.matches > 0 else 0.5
+        return tournament_win_rate
+
+
+    def get_h2h_tournament_wins(
+            self,
+            tournament : str,
+            rival : str,
+    ) -> float:
+        """Return this player's win count against a rival in a specific tournament."""
+        return self.performance.tournaments[tournament].rival_wins[rival]
+
+
+    def get_h2h_court_wins(
             self,
             court : str,
             rival : str,
     ) -> float:
-        """Return this player's win rate against a rival on a specific court."""
-        rival_performance : PerformanceStats = self.performance.courts[court].rivals[rival]
-        return (
-            rival_performance.wins / rival_performance.matches
-            if rival_performance.matches > 0 else 0.5
-        )
+        """Return this player's win count against a rival on a specific court."""
+        return self.performance.courts[court].rival_wins[rival]
 
-
-    def get_surface_performance(
+    def get_surface_win_rate(
             self,
             surface : str,
     ) -> float:
@@ -271,14 +368,38 @@ class Player:
         return surface_win_rate
 
 
-    def get_h2h_surface_performance(
+    def get_h2h_surface_wins(
             self,
             surface : str,
             rival : str,
     ) -> float:
-        """Return this player's win rate against a rival on a specific surface."""
-        rival_performance = self.performance.surfaces[surface].rivals[rival]
+        """Return this player's win count against a rival on a specific surface."""
+        return self.performance.surfaces[surface].rival_wins[rival] 
+
+
+    def get_round_win_rate(self, round : float) -> float:
+        """Return the win rate of the player in a specific round, otherwise 0.5."""
+        round_performance = self.performance.rounds[round]
         return (
-            rival_performance.wins / rival_performance.matches
-            if rival_performance.matches > 0 else 0.5
+            round_performance.stats.wins / round_performance.stats.matches
+            if round_performance.stats.matches > 0 else 0.5
         )
+
+
+    def get_h2h_round_wins(self, round : float, rival : str) -> float:
+        """Return this player's win count against a rival in a specific round."""
+        return self.performance.rounds[round].rival_wins[rival]
+
+
+    def get_series_win_rate(self, series : float) -> float:
+        """Return the win rate of the player in a specific series, otherwise 0.5."""
+        series_performance = self.performance.series[series]
+        return (
+            series_performance.stats.wins / series_performance.stats.matches
+            if series_performance.stats.matches > 0 else 0.5
+        )
+
+
+    def get_h2h_series_wins(self, series : float, rival : str) -> float:
+        """Return this player's win count against a rival in a specific series."""
+        return self.performance.series[series].rival_wins[rival]

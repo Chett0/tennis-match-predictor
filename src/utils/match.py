@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 @dataclass
 class Match:
-    round : int
-    series : int
+    round : float
+    series : float
     pts_diff : float
     weighted_pts_diff : float
     rank_diff : int
@@ -19,25 +19,32 @@ class Match:
     win_streak_diff : int
     lose_streak_diff : int
     court_win_rate_diff : float
+    tournament_win_rate_diff: float
     surface_win_rate_diff : float
+    round_win_rate_diff : float = 0.0
+    series_win_rate_diff : float = 0.0
     h2h_weighted_diff : float = 0.0
     h2h_court_diff : float = 0.0
-    h2h_surface_diff : float = 0.0
+    h2h_tournament_diff: float = 0.0
+    h2h_surface_diff: float = 0.0
+    h2h_round_diff : float = 0.0
+    h2h_series_diff : float = 0.0
     win_rate_bestof3_diff : float = 0.0
     win_rate_bestof5_diff : float = 0.0
     number_recent_matches_diff : int = 0
     last_k_games_win_rate_diff : float = 0.0
     last_k_sets_win_rate_diff : float = 0.0
+    last_k_non_completed_matches_diff: float = 0.0
 
 
 class MatchBuilder:
 
-    def add_round(self, round : int):
-        self.round : int = round
+    def add_round(self, round : float):
+        self.round : float = round
         return self
     
-    def add_series(self, series : int):
-        self.series : int = series
+    def add_series(self, series : float):
+        self.series : float = series
         return self
 
     def add_pts_diff(self, pts_diff : float):
@@ -70,6 +77,10 @@ class MatchBuilder:
 
     def add_h2h_court_diff(self, h2h_court_diff : float):
         self.h2h_court_diff : float = h2h_court_diff
+        return self
+
+    def add_h2h_tournament_diff(self, h2h_tournament_diff : float):
+        self.h2h_tournament_diff : float = h2h_tournament_diff
         return self
 
     def add_h2h_surface_diff(self, h2h_surface_diff : float):
@@ -131,9 +142,33 @@ class MatchBuilder:
     def add_court_win_rate_diff(self, court_win_rate_diff : float):
         self.court_win_rate_diff : float = court_win_rate_diff
         return self
+
+    def add_tournament_win_rate_diff(self, tournament_win_rate_diff : float):
+        self.tournament_win_rate_diff : float = tournament_win_rate_diff
+        return self
+    
+    def add_last_k_non_completed_matches_diff(self, last_k_non_completed_matches_diff : float):
+        self.last_k_non_completed_matches_diff : float = last_k_non_completed_matches_diff
+        return self
     
     def add_surface_win_rate_diff(self, surface_win_rate_diff : float):
         self.surface_win_rate_diff : float = surface_win_rate_diff
+        return self
+
+    def add_round_win_rate_diff(self, round_win_rate_diff : float):
+        self.round_win_rate_diff : float = round_win_rate_diff
+        return self
+
+    def add_series_win_rate_diff(self, series_win_rate_diff : float):
+        self.series_win_rate_diff : float = series_win_rate_diff
+        return self
+
+    def add_h2h_round_diff(self, h2h_round_diff : float):
+        self.h2h_round_diff : float = h2h_round_diff
+        return self
+
+    def add_h2h_series_diff(self, h2h_series_diff : float):
+        self.h2h_series_diff : float = h2h_series_diff
         return self
 
     def build(self):
@@ -153,12 +188,19 @@ class MatchBuilder:
             last_k_matches_rank_variation_diff = self.last_k_matches_rank_variation_diff,
             weighted_ranking_diff = self.weighted_ranking_diff,
             court_win_rate_diff = self.court_win_rate_diff,
+            tournament_win_rate_diff = self.tournament_win_rate_diff,
             surface_win_rate_diff = self.surface_win_rate_diff,
+            last_k_non_completed_matches_diff = self.last_k_non_completed_matches_diff,
+            round_win_rate_diff = self.round_win_rate_diff,
+            series_win_rate_diff = self.series_win_rate_diff,
             win_streak_diff = self.win_streak_diff,
             lose_streak_diff = self.lose_streak_diff,
             h2h_weighted_diff = self.h2h_weighted_diff,
             h2h_court_diff = self.h2h_court_diff,
+            h2h_tournament_diff = self.h2h_tournament_diff,
             h2h_surface_diff = self.h2h_surface_diff,
+            h2h_round_diff = self.h2h_round_diff,
+            h2h_series_diff = self.h2h_series_diff,
             win_rate_bestof3_diff = self.win_rate_bestof3_diff,
             win_rate_bestof5_diff = self.win_rate_bestof5_diff,
             number_recent_matches_diff = self.number_recent_matches_diff,
